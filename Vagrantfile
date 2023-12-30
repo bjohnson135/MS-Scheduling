@@ -19,7 +19,7 @@ Vagrant.configure(VAGRANT_API_VERSION) do |config|
   config.vm.box = "ubuntu/jammy64"
   config.vm.box_url = "https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64-vagrant.box"
   config.vm.network :private_network, ip: IP, hostsupdater: 'skip'
-  config.vm.hostname = 'staffjoy-v2.local'
+  config.vm.hostname = 'personal-version.staffjoy-v2.local'
   config.vm.box_download_insecure = true
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
