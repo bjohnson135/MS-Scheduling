@@ -16,6 +16,12 @@ fi
 # Boot the vm
 vagrant up
 
+# vagrant ssh
+# cd $STAFFJOY
+# ./vagrant/minikube.sh
+# ./vagrant/mysql.sh
+# ./ci/dev-build.sh
+
 # Catch shutdown signal and kill both
 trap 'kill %1;' SIGINT
 

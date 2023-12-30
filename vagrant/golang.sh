@@ -66,12 +66,12 @@ if ! command -V migrate ; then
 fi
 
 if ! command -V buildifier ; then
-    go install github.com/bazelbuild/buildtools/buildifier
+    go install github.com/bazelbuild/buildtools/buildifier@latest
 fi
 
 if ! command -V rice ; then
-    go install github.com/GeertJohan/go.rice
-    go install github.com/GeertJohan/go.rice/rice
+    go install github.com/GeertJohan/go.rice@latest
+    go install github.com/GeertJohan/go.rice/rice@latest
 fi
 
 go install github.com/gogo/protobuf/...
