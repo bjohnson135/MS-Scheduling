@@ -6,7 +6,7 @@ go_library(
     name = "company",
     srcs = [
         "client.go",
-        "company.pb.go",
+        "company_grpc.pb.go",
         "constants.go",
     ],
     deps = [

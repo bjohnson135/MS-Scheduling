@@ -5,7 +5,7 @@ load("//tools:build_rules/go.bzl", "go_library")
 go_library(
     name = "account",
     srcs = [
-        "account.pb.go",
+        "account_grpc.pb.go",
         "client.go",
         "constants.go",
     ],

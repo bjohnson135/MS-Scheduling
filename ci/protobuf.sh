@@ -7,7 +7,7 @@ set -e
 
 
 # VERSION
-GRPC_GATEWAY_VERSION="v1.15.2";
+GRPC_GATEWAY_VERSION="1.15.2";
 GOGO_PROTOBUF_VERSION="v1.3.2";
 
 # PATHS
@@ -18,7 +18,7 @@ GOGO_PROTOBUF_PATH="${GO_PKG_PATH}/github.com/gogo/protobuf"
 
 # Links to versions
 ## GRPC
-[ -d "${GRPC_PATH}" ] && rm -Rf ${GRPC_PATH}; ln -s "${GRPC_PATH}@${GRPC_GATEWAY_VERSION}" ${GRPC_PATH}
+[ -d "${GRPC_PATH}" ] && rm -Rf ${GRPC_PATH}; ln -s "${GRPC_PATH}-${GRPC_GATEWAY_VERSION}" ${GRPC_PATH}
 
 ## GOGO PROTOBUF
 [ -d "${GOGO_PROTOBUF_PATH}" ] && rm -Rf ${GOGO_PROTOBUF_PATH}; ln -s "${GOGO_PROTOBUF_PATH}@${GOGO_PROTOBUF_VERSION}" ${GOGO_PROTOBUF_PATH}
@@ -30,9 +30,10 @@ protoc \
     -I ./protobuf/ \
     -I ${GOPATH}/pkg/mod \
     -I ${GRPC_PATH}/third_party/googleapis \
-    --go_out=Mgoogle/api/annotations.proto=google.golang.org/genproto/googleapis/api/annotations,plugins=grpc:../ \
+    --go_out=./account --go_opt=paths=source_relative \
+    --go-grpc_out=./account --go-grpc_opt=paths=source_relative \
     ./protobuf/account.proto
-mv account/account.pb.go account/api/
+mv account/account_grpc.pb.go account/api/
 
 protoc \
     -I ./protobuf/ \
@@ -40,9 +41,9 @@ protoc \
     -I ${GRPC_PATH}/third_party/googleapis \
     --grpc-gateway_out=logtostderr=true:../ \
     ./protobuf/account.proto
-mv ./account/account.pb.gw.go ./account/api/
+# mv ./account/account.pb.gw.go ./account/api/
 
-sed -i "s/package account/package main/g" account/api/account.pb.go
+sed -i "s/package account/package main/g" account/api/account_grpc.pb.go
 sed -i "s/package account/package main/g" account/api/account.pb.gw.go
 
 # Main account package
@@ -96,9 +97,10 @@ protoc \
     -I ./protobuf/ \
     -I ${GOPATH}/pkg/mod \
     -I ${GRPC_PATH}/third_party/googleapis \
-    --go_out=Mgoogle/api/annotations.proto=google.golang.org/genproto/googleapis/api/annotations,plugins=grpc:../ \
+    --go_out=./company --go_opt=paths=source_relative \
+    --go-grpc_out=./company --go-grpc_opt=paths=source_relative \
     ./protobuf/company.proto
-mv company/company.pb.go company/api/
+mv company/company_grpc.pb.go company/api/
 
 protoc \
     -I ./protobuf/ \
