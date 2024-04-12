@@ -61,7 +61,7 @@ If you are running Go code, you should [set up your \$GOPATH](https://golang.org
 
 ```
 mkdir -p $GOPATH/src/
-git clone git@github.com:LandRover/StaffjoyV2.git $GOPATH/src/v2.staffjoy.com/
+git clone git@github.com:bjohnson135/MS-Scheduling.git $GOPATH/src/v2.staffjoy.com/
 ```
 
 ### Development station setup - One-time dependencies on host machine (laptop)
