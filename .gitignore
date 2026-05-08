@@ -1,54 +1,63 @@
-# Compiled Object files, Static and Dynamic libs (Shared Objects)
+# Compiled binaries / build artifacts
 *.o
 *.a
 *.so
 *.swo
-
-# Folders
+*.exe
+*.test
+*.prof
 _obj
 _test
-
-# Architecture specific extensions/prefixes
 *.[568vq]
 [568vq].out
-
 *.cgo1.go
 *.cgo2.c
 _cgo_defun.c
 _cgo_gotypes.go
 _cgo_export.*
-
 _testmain.go
 
-*.exe
-*.test
-*.prof
+# Go modules
+vendor/
 
-# ignore bazel bins
+# Bazel leftovers (until W1 deletion sweep removes them entirely)
 bazel-*
 
-# ignore vagrant
+# Vagrant leftovers (until W2 deletes Vagrantfile)
 .vagrant
 
-# ignore visual studio configuration
-.vscode
-
-# Silly macs
+# Editor / OS
 .DS_Store
 *.swp
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
 
-#logs
+# Logs
 *.log
-
-# allow local go/glide vendor
-vendor
-
-# ignore glide cache
-.glide/
-
-# Lock files
-*.lock
-
-# in case you accidentally run npm at this level
 npm-debug.log
+
+# Node
 node_modules/
+.pnpm-store/
+
+# Vite / Webpack output (kept under app/dist/, myaccount/dist/ — already covered by service-level)
+
+# Env files (local secrets)
+.env
+.env.local
+.env.*.local
+!.env.schema
+!.env.example
+
+# Test coverage
+coverage.out
+*.coverprofile
+
+# Generated docs (regenerated from .env.schema)
+docs/env-vars.md.generated
+
+# Docker compose runtime artifacts
+.docker-volumes/

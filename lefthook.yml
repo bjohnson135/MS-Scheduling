@@ -1,0 +1,29 @@
+# Pre-commit hooks. Install with `lefthook install`.
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    gofumpt:
+      glob: "*.go"
+      run: gofumpt -w {staged_files}
+      stage_fixed: true
+    golangci-lint:
+      glob: "*.go"
+      run: golangci-lint run --fix --new-from-rev=origin/master {staged_files}
+      stage_fixed: true
+    eslint:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: pnpm exec eslint --fix {staged_files}
+      stage_fixed: true
+    prettier:
+      glob: "*.{json,yaml,yml,md,css,scss}"
+      run: pnpm exec prettier --write {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    conventional:
+      run: |
+        head -1 "$1" | grep -qE '^(feat|fix|chore|docs|refactor|test|build|ci|perf|style|revert)(\(.+\))?: .+' \
+          || { echo "Commit message must be conventional (feat: / fix: / chore: / etc.)"; exit 1; }
