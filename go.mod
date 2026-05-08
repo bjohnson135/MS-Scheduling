@@ -1,6 +1,8 @@
 module v2.staffjoy.com
 
-go 1.18
+go 1.23
+
+toolchain go1.23.4
 
 require (
 	github.com/GeertJohan/go.rice v1.0.2
