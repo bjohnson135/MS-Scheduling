@@ -7,7 +7,6 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -34,6 +33,7 @@ const (
 	userSudo             contextKey = iota // Used for gorilla/context
 	requestAuthenticated contextKey = iota // Used for gorilla/context
 	requestedService     contextKey = iota // Used for gorilla/context
+	requestedPathPrefix  contextKey = iota // matched prefix from ServiceMiddleware
 )
 
 var (
@@ -61,19 +61,25 @@ func init() {
 func main() {
 	logger.Infof("Initialized environment %s", config.Name)
 
+	if signingToken == "" {
+		logger.Fatal("SIGNING_SECRET is required; refusing to boot. Set it in .env (see .env.schema).")
+	}
+
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = ":80"
+	}
+
 	r := NewRouter(config, logger)
-	// Set up http server
-	// Note - we do this without the Negroni convenience func so that
-	// we can add in TLS support in the future too.
 	s := &http.Server{
-		Addr:           ":80",
+		Addr:           addr,
 		Handler:        r,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	// TODO - add in a logging system and have it do a fatal call here
+	logger.Infof("Faraday listening on %s", addr)
 	logger.Panicf("%v", s.ListenAndServe())
 }
 
@@ -148,16 +154,12 @@ func proxyHandler(res http.ResponseWriter, req *http.Request) {
 	switch internalReq.Header.Get(auth.AuthorizationHeader) {
 	case auth.AuthorizationAnonymousWeb:
 		if service.Security != services.Public {
-			// send to login
-			scheme := "https"
-			if config.Name == "development" || config.Name == "test" {
-				scheme = "http"
+			// Send to /login on the same host (path-based routing — see ADR-0004).
+			returnTo := req.URL.EscapedPath()
+			if req.URL.RawQuery != "" {
+				returnTo += "?" + req.URL.RawQuery
 			}
-			redirectDest := &url.URL{Host: "www." + config.ExternalApex, Scheme: scheme, Path: "/login/"}
-
-			url := req.Host + req.URL.EscapedPath()
-
-			http.Redirect(res, req, redirectDest.String()+"?return_to="+url, http.StatusTemporaryRedirect)
+			http.Redirect(res, req, "/login/?return_to="+returnTo, http.StatusTemporaryRedirect)
 			return
 		}
 	case auth.AuthorizationAuthenticatedUser:
