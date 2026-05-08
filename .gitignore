@@ -61,3 +61,4 @@ docs/env-vars.md.generated
 
 # Docker compose runtime artifacts
 .docker-volumes/
+/seed
