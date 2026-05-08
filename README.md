@@ -1,206 +1,133 @@
-# Staffjoy V2 - Fork
+# MS-Scheduling
 
-[![Build Status](https://github.com/LandRover/StaffjoyV2/actions/workflows/ci-master.yaml/badge.svg)](https://github.com/LandRover/StaffjoyV2/actions/workflows/ci-master.yaml) [![Godoc Reference](https://godoc.org/v2.staffjoy.com?status.svg)](https://godoc.org/v2.staffjoy.com)
+A locally-runnable foundation for a modern workforce-management / shift-scheduling product, built on the Staffjoy v2 architecture.
 
-The main purpose of this StaffjoyV2 fork is education. I find in this project very inspiring and learn a lot from the implementation and engineering and monorepo structure.
+> **Heritage:** this repo is forked from [LandRover/StaffjoyV2](https://github.com/LandRover/StaffjoyV2), which is itself a maintained fork of the original [Staffjoy/v2](https://github.com/Staffjoy/v2) (deprecated 2019). See [docs/adr/0001-base-on-landrover.md](docs/adr/0001-base-on-landrover.md) for why we started here.
 
-Current fork will focus on coding standards, testing, DevOps, React, Go and **maybe** a working software on the other end.
+## What's here
 
-There are 2 blood lines for this project:
+- **13 Go services** (account, company, faraday, www, etc.) — gRPC + grpc-gateway, MySQL-backed
+- **2 React frontends** (`app/` for managers, `myaccount/` for users) — React 18 + Webpack 5
+- **Faraday gateway** — single host, path-based routing on `localhost:8080`
+- **Docker Compose** dev stack with mailhog for SMTP capture
+- **Per-service multi-stage Dockerfiles**, distroless runtimes
+- **GitHub Actions** CI scaffold (extend in follow-up)
 
-- The active development branch is [`master`](https://github.com/LandRover/StaffjoyV2), where new features are being added, dependencies updated and processes change.
-- The [`minimal-fixes-to-compile`](https://github.com/LandRover/StaffjoyV2/tree/minimal-fixes-to-compile) branch contains minimal changes to this original repo to make it compile without altering the original functionality. Mainly by specifying the version numbers to fit 2016 latest dependencies.
+## What's NOT here yet
 
----
+This base modernizes Staffjoy v2; it does *not* yet deliver the things you'd need for a When I Work-style product. These are tracked in [TODOS.md](TODOS.md):
 
-## Staffjoy Original Notice
+- Worker login (Staffjoy v2 explicitly never had it)
+- Time clock / clock-in
+- Worker mobile app (PWA recommended for v1)
+- Team messaging (only one-way SMS bot exists today)
+- Payroll integration
+- Reporting
+- Production deploy story
+- Auto-scheduling solver
 
-[Staffjoy is shutting down](https://blog.staffjoy.com/staffjoy-is-shutting-down-39f7b5d66ef6#.ldsdqb1kp), so we are open-sourcing our code. This the second version of our product, a ground-up rewrite intended for small businesses, like restaurants. This product was very simple and did _not_ provide features like allowing workers to log in, clock-in, etc. If you want those features, please use [Staffjoy Suite](https://github.com/staffjoy/suite) You can learn about the design journey from V1 to V2 in [this blog post](https://blog.staffjoy.com/staffjoy-v2-ca15ff1a1169#.e7lmhde6v).
+## Quickstart
 
-![Staffjoy V2](https://user-images.githubusercontent.com/1312414/29037396-1f0913ba-7b69-11e7-983f-65bea21718d2.png)
+Requirements: **[Docker](https://www.docker.com/products/docker-desktop) 24+** with `docker compose` v2, **[mise](https://mise.jdx.dev/)** (recommended) for Go/Node version pinning, plus `make` and `openssl`.
 
-We started building V2 in August 2016, became feature complete in November 2016, and [launched to the press in January 2017](http://venturebeat.com/2017/01/10/staffjoy-raises-1-2-million-to-help-small-businesses-manage-workflow-scheduling/).
-
-This is a _monorepo_, so all of the code for all of the services are in this repo. The core technologies are the [Bazel build system](https://bazel.build), [Kubernetes](https://kubernetes.io) (including its DNS for internal service discovery), [Redux](http://redux.js.org), [Go](https://golang.org), [Protocol Buffers](https://developers.google.com/protocol-buffers/), [gRPC](http://www.grpc.io), and [Yarn](https://yarnpkg.com). In staging and production, we used [Google Container Engine](https://cloud.google.com/container-engine/) and their managed databases.
-
-## Services
-
-[Read about the V2 architecture on our blog](https://blog.staffjoy.com/staffjoys-v2-architecture-9d2fcb4015fd#.pggmlbtmw)
-
-[![Staffjoy V2 Architecture](https://i.imgur.com/W9UQMuk.jpg)](https://blog.staffjoy.com/staffjoys-v2-architecture-9d2fcb4015fd#.pggmlbtmw)
-
-- `faraday` - Proxies all traffic from external services to internal ones. It also tells backend services whether a user is logged in. It's the only service that has a public IP address!
-- `www` - [www.staffjoy.com] is the main marketing website. It also handles login and logout.
-- `myaccount` - [myaccount.staffjoy.com] is a single-page javascript app that lets users modify their accounts
-- `account-gateway` [account.staffjoy.com] is the externally-available REST api for modifying accounts. It converts REST to gRPC for the accounts-datastore
-- `accounts-server` is the internal system that processes gRPC calls and stores/retrieves information using the account database.
-- `company-gateway` [company.staffjoy.com] is the externally-available REST api for modifying companies. It converts REST to gRPC for the companys-datastore
-- `company-server` is the internal system that processes gRPC calls and stores/retrieves information using the company database.
-- `whoami` [whoami.staffjoy.com] is a website that sends information about the current web session for easy access in the front-end.
-- `superpowers` [superpowers.staffjoy-v2.local] is a development-only website that lets you gain super user powers across Staffjoy (denoted as "support" flag on user accounts)
-- `ical` [ical.staffjoy-v2.local] is service serving up a worker's shift list through ical
-
-### External API Standards
-
-- Services should be RESTful JSON over HTTPS
-- Serve the spec at `/swagger.json`
-- Use the `apidocs` package to serve a swagger UI at `/ui/`
-
-## Dev
-
-### Getting started
-
-Welcome to Staffjoy!
-
-We use a **monorepo** that stores all of our code in this single repo. We use Vagrant to run a Minikube(Kubernetes) cluster locally on your laptop.
-This makes it easy to run all of Staffjoy's services.
-
-### Setting up your Gopath
-
-If you are running Go code, you should [set up your \$GOPATH](https://golang.org/doc/install), then clone this repository into the `v2.staffjoy.com` package:
-
-```
-mkdir -p $GOPATH/src/
-git clone git@github.com:bjohnson135/MS-Scheduling.git $GOPATH/src/v2.staffjoy.com/
+```bash
+git clone https://github.com/bjohnson135/MS-Scheduling.git
+cd MS-Scheduling
+mise install            # installs Go 1.23.4, Node 20.18.0, pnpm, buf, etc.
+make bootstrap          # copies .env, generates SIGNING_SECRET / CSRF_SECRET, checks port
+make up                 # docker compose up -d --build (~5 min cold)
+make doctor             # probe Faraday + every backend; non-zero exit on failure
+open http://localhost:8080
 ```
 
-### Development station setup - One-time dependencies on host machine (laptop)
+If `make doctor` returns 200 across the board, you have a fully booted local Staffjoy stack. If a backend is unhealthy, `make logs.<service>` (e.g. `make logs.faraday`, `make logs.account-server`) tails its container.
 
-- [Virtualbox](https://www.virtualbox.org)
-- [Vagrant](https://www.vagrantup.com/docs/getting-started/), then run `vagrant up` to boot the dev server.
-- Vagrant Plugins:
-  - Vagrant host manager: `vagrant plugin install vagrant-hostmanager`
-  - Vagrant resize disk: `vagrant plugin install vagrant-disksize`
-- [modd](https://github.com/cortesi/modd)
+To wipe state and start over: `make reset` (drops MySQL volume).
 
-### Running the Environment
-
-Run `make dev`. Code will boot and run at [staffjoy-v2.local](http://www.staffjoy-v2.local). Note that the first time you do this could take up to ~30 minutes in order to provision the VM!
-
-Changes will trigger an automatic rebuild and redeployment. (Check deployment progress at [kubernetes-dashboard url](http://kubernetes.staffjoy-v2.local/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/overview?namespace=development)). End the dev server with `control + c` (and it will automatically shut off the VM).
-
-If you run into issues with stuck deployments in development - then run `make dev-k8s-fix` then re-run `make dev`.
-
-### Accessing the environment
-
-Access the VM by running `vagrant ssh`. Code is located in `/home/vagrant/golang/src/v2.staffjoy.com/` (aliased to `$STAFFJOY`, i.e. `cd $STAFFJOY`).
-
-To build code and run it locally, in vagrant go to the code directory `$STAFFJOY` in vagrant, then run `make dev-build` for a one-time build.
-
-If things are really goofing, run `vagrant destroy -f` then rebuild.
-
-### PHPMyAdmin
-
-To view the DB locally you can pop a docker image of PHPMyAdmin:
-
-Login Info:
-
-- Host: http://kubernetes.staffjoy-v2.local:8080
-- Login: root/SHIBBOLETH
+## Make targets
 
 ```
-$ docker run --name myadmin -d -e PMA_HOST=10.0.0.100 -p 8080:80 phpmyadmin/phpmyadmin
+make help          # default; grouped command reference
+make bootstrap     # one-time: .env, secrets, port check
+make up            # docker compose up -d --build
+make down          # docker compose down (volumes preserved)
+make reset         # down -v, up -d --build, reseed
+make rebuild       # rebuild every image, force-recreate
+make logs          # tail every service
+make logs.<svc>    # tail one service (e.g. logs.faraday)
+make shell.<svc>   # exec /bin/sh in a service container
+make psql          # mysql -uroot inside the mysql container
+make status        # one-line per service: running / healthy / unhealthy
+make doctor        # curl Faraday's aggregator; exits non-zero on failure
+make build         # go build ./... + frontend bundles
+make test          # go test -race -short ./...
+make lint          # golangci-lint + eslint
+make tidy          # go mod tidy
+make proto         # buf generate (regenerate gRPC + grpc-gateway + swagger)
+make images        # build every service image locally without compose up
 ```
 
-### Development resources
-
-- [Kubernetes UI](http://kubernetes.staffjoy-v2.local/api/v1/namespaces/kubernetes-dashboard/services/http:kubernetes-dashboard:/proxy/#/overview?namespace=development). We use the `development` namespace. You can see logs from a "pod" (container) through the UI ([link](http://kubernetes.staffjoy-v2.local/api/v1/namespaces/kube-system/services/http:kubernetes-dashboard:/proxy/#!/pod?namespace=development))
-- [HTTP Debugger (for faraday)](http://faraday.staffjoy-v2.local/) - use this to examine headers being sent to internal systems
-- [Superpowers lets you do magic things](http://superpowers.staffjoy-v2.local) - use it while logged in to get `support` api permissions in dev.
-
-## Go
-
-### Assets in Go
-
-If you are loading assets like templates, CSS, JS, etc - you need to package the the data into the binary. Otherwise, the app will ship and it won't be able to find the assets!
-
-To do this, use the [go.rice](https://github.com/GeertJohan/go.rice) project. If you modify any of the asset files, you will need to rebuild them then commit the resulting `rice-box.go` file and commit it. You have been warned!
-
-Most services provide a `build.sh` file that compiles all the data that needs to be committed.
-
-### Development tools
-
-The tool [GoConvey](https://github.com/smartystreets/goconvey) is great for seeing tests.
-
-### Environment variables for configuration
-
-- `ENV`: Set to `development`,`staging`, or `production`. Null defaults to `development`
-- `SENTRY_DSN`: Set to the [Sentry](https://sentry.io) api key in every Go service for proper error tracking and reporting
-
-## WSL (Optional)
-
-- Create new file `/etc/wsl.conf`, with the following content:
+## Architecture
 
 ```
-[automount]
-enabled = true
-options = "metadata,umask=022,fmask=11"
+HOST: localhost:8080  (single port, single binary frontline)
+              │
+              ▼
+        ┌──────────┐
+        │ faraday  │  Path-based routing (ADR-0004) + auth check
+        │          │  + /health aggregator across every backend
+        └─────┬────┘
+   ┌──────────┼─────────┬──────────┬─────────┬───────────┬─────────┐
+   ▼          ▼         ▼          ▼         ▼           ▼         ▼
+ /www      /app/*   /myaccount  /api/v2/*  /api/v2/*  /whoami   /ical
+ (Go)     (React)   (React)    /account/* /company/*  (Go)      (Go)
+                                  │           │
+                                  ▼           ▼
+                            account-server  company-server
+                                  │           │
+                                  ▼           ▼
+                              MySQL: account, company
 
-[boot]
-command="service ssh restart; service rsyslog restart; service cron restart"
+Side services (profile-gated): email-server, sms-server, bot-server, superpowers
 ```
 
-- Install latest Vagrant inside the WSL and the Host
-- Install latest Virtualbox
-- Run dev env
+## Docs
 
-Enable Create symbolic links:
-```
-- Open Local Security Policy (gpedit.msc)
-- Navigate to: Computer Configuration\Windows Settings\Security Settings\Local Policies\User Rights Assignment
-- Open 'Create Symbolic Links' (SeCreateSymbolicLinkPrivilege)
-- Add your username (or a group you are assigned to)
-- Restart PC
-```
+- [docs/adr/](docs/adr/) — Architecture decision records (10 entries; the *why* behind every modernization choice)
+- [TODOS.md](TODOS.md) — Deferred items, organized by priority
+- [docs/troubleshooting.md](docs/troubleshooting.md) — Common failure modes keyed to fix commands
 
-```
-> bash
-$ vagrant up
-$ vagrant ssh
-$ cd $STAFFJOY
-$ make dev-build
-```
+## Working with the codebase
 
-## Protocol Buffers
+### Adding a Go service
 
-If you modify the files in `protobuf/`, run `make protobuf` to recompile all of the generated files.
+1. Create the service directory with a `main.go`.
+2. Add an entry to `faraday/services/services.go` mapping its path prefix to its in-network hostname.
+3. Add a service block to `docker-compose.yml` using the appropriate Dockerfile template (`docker/Dockerfile.go-service` for stateless services; `docker/Dockerfile.go-service-migrations` if it owns SQL migrations).
+4. `make rebuild`.
 
-⚠️ Please make sure that the version of protobuf matches the runtime version ([see this issue](https://github.com/Staffjoy/v2/issues/5#issuecomment-305704425)):
+### Adding a SQL migration
 
-```sh
-go install github.com/golang/protobuf/...
-cd $GOPATH/src/github.com/golang/protobuf/
-# Switch to version that is packaged in app
-# v1.4.2 May 14, 2020 (LATEST OFFICIAL RELEASE)
-git checkout d04d7b157bb510b1e0c10132224b616ac0e26b17
-# Re-install
-go install github.com/golang/protobuf/proto
-cd $GOPATH/src/v2.staffjoy.com/
-make protobuf
+1. Drop a numbered `*.up.sql` and `*.down.sql` into `account/migrations/` or `company/migrations/`.
+2. Restart the owning service (`docker compose restart account-server`) — the entrypoint runs pending migrations on every boot.
+
+### Running tests selectively
+
+```bash
+go test -race -count=1 ./company/...
+go test -race -count=1 -run TestSanitizeDayOfWeek ./company/server/
 ```
 
-@todo consider updating, many changes
+### Debugging a Go service in VS Code
 
-If you're getting started with protocol buffers, here are some resources:
+`.vscode/launch.json` ships with Delve attach configs for the major services on ports 2345–2348.
 
-- [Protocol Buffers](https://developers.google.com/protocol-buffers/)
-- [gRPC](http://grpc.io)
-- [gRPC health checks](https://github.com/grpc/grpc/blob/master/doc/health-checking.md)
+## Origins + credits
 
-## Working Offline
+The original Staffjoy v2 was authored by [@philipithomas](https://github.com/philipithomas), [@samdturner](https://github.com/samdturner), [@andhess](https://github.com/andhess), and contractors at Staffjoy circa 2016–2017. [@kootommy](https://github.com/kootommy) designed the application. The code was open-sourced when Staffjoy shut down. [@LandRover](https://github.com/LandRover) maintained the fork through 2025-06-23, modernizing Go modules, React 18, GitHub Actions, mailgun, and Ubuntu jammy.
 
-- Email will break, but you can look at the system logs for the email service to see what would have been sent. (Useful for grabbing account activation links!)
-- See all Go documentation installed on the host machine with `godoc -http=":8080"`. You'll be able to see all docs at [localhost:8080](http://localhost:8080)
+This fork (May 2026) replaces Vagrant + Bazel with Docker Compose + a Makefile, refactors Faraday to path-based routing, bumps to Go 1.23 and Node 20, swaps `dgrijalva/jwt-go` → `golang-jwt/jwt/v5`, and migrates `go.rice` → `embed` (partial). See [docs/adr/](docs/adr/) for the full decision log.
 
-## Fork Todos
+## License
 
-- Convert internal go build.sh to makefile.
-- Deprecate Glide for god modules.
-- Added request tracing for `Faraday`, current middleware implemntation (faraday/trace_mw.go) was depricated in https://github.com/googleapis/google-cloud-go (v0.46.0). Using latest, broke since upgrade.
-- Migrate Go dependencies to be go.mod based via Bazel. Due to this dependencies currently maintained twice in go.mod and WORKSPACE (bazel).
-- Verify GCP deployment to stage and production works with Google Container Engine the same it works in local Kubernetes 1.18+.
-- Sentry after upgrading to Go 1.12 threw exceptions - which were fixed but not tested - check still works correctly.
-
-## Credit
-
-The authors of the original code were [@philipithomas](https://github.com/philipithomas), [@samdturner](https://github.com/samdturner), [@andhess](https://github.com/andhess), and some contractors. [@kootommy](https://github.com/kootommy) designed the application and most of the marketing pages, and worked closely with engineering on implementation. This is a fork of the internal repository. For security purposes, the Git history has been squashed.
+[MIT](LICENSE). Same as the upstream Staffjoy v2.
