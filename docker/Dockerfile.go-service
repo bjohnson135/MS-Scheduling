@@ -1,0 +1,41 @@
+# Generic multistage Dockerfile for any Go service in the monorepo.
+# Build args:
+#   SERVICE_PATH — repo-relative path to the service main package (e.g. "whoami", "account/api").
+#   GO_VERSION   — Go toolchain version. Should match mise.toml.
+# Result: a distroless image that runs the compiled binary as the only process.
+#
+# Build from the repo root:
+#   docker build -f docker/Dockerfile.go-service \
+#       --build-arg SERVICE_PATH=whoami \
+#       -t ghcr.io/bjohnson135/ms-scheduling/whoami:dev .
+#
+# See ADR-0002 (drop Bazel) and ADR-0005 (replace Vagrant) for context.
+
+ARG GO_VERSION=1.23.4
+
+# ---------- build stage ----------
+FROM golang:${GO_VERSION}-alpine AS build
+ARG SERVICE_PATH
+RUN test -n "${SERVICE_PATH}" || (echo "ERROR: SERVICE_PATH build-arg is required" && exit 1)
+
+RUN apk add --no-cache git ca-certificates
+WORKDIR /src
+
+# Pre-fetch dependencies to leverage docker layer cache.
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the entire repo (mono-module). Building one service compiles only what
+# its imports reach; the rest of the tree contributes to the build cache only.
+COPY . .
+
+# Build a static binary, trim path info, strip debug symbols.
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags='-s -w' \
+    -o /out/service ./${SERVICE_PATH}
+
+# ---------- runtime stage ----------
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /out/service /app/service
+USER nonroot:nonroot
+ENTRYPOINT ["/app/service"]

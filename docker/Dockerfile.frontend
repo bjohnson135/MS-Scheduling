@@ -1,0 +1,32 @@
+# Multistage Dockerfile for the React frontends (app/, myaccount/).
+# Build args:
+#   APP_PATH — repo-relative path to the frontend source dir (e.g. "app", "myaccount").
+#
+# Stage 1 (Node): pnpm install + webpack build → /dist
+# Stage 2 (nginx): serve /dist as a static site under a path-prefix that
+# matches Faraday's path-based router (see ADR-0004).
+
+ARG NODE_VERSION=20.18.0
+
+# ---------- build stage ----------
+FROM node:${NODE_VERSION}-alpine AS build
+ARG APP_PATH
+RUN test -n "${APP_PATH}" || (echo "ERROR: APP_PATH build-arg is required" && exit 1)
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+
+WORKDIR /src
+COPY ${APP_PATH}/package.json ${APP_PATH}/yarn.lock* ${APP_PATH}/pnpm-lock.yaml* ./
+RUN pnpm install --frozen-lockfile || npm install
+
+COPY ${APP_PATH}/ ./
+RUN pnpm run build || npm run build
+
+# ---------- runtime stage ----------
+FROM nginx:alpine
+ARG APP_PATH
+COPY --from=build /src/dist /usr/share/nginx/html
+COPY docker/nginx-frontend.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+HEALTHCHECK --interval=10s --timeout=2s --retries=3 \
+  CMD wget -qO- http://localhost/healthz || exit 1

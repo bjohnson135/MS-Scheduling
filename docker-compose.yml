@@ -1,0 +1,313 @@
+# MS-Scheduling local dev stack.
+#
+# Brings up MySQL, mailhog, every Go backend, every React frontend, and Faraday
+# on a single host port (default 8080). Path-based routing replaces the
+# *.staffjoy-v2.local subdomain model — see ADR-0004.
+#
+# Quickstart (after `make bootstrap`):
+#   docker compose up -d
+#   docker compose ps        # wait for everything to report (healthy)
+#   open http://localhost:8080
+#
+# Optional profiles:
+#   --profile notifications  # email-server, sms-server, bot-server (need keys)
+#   --profile superpowers    # dev-only sudo UI
+#
+# All container env is fed from the .env file (gitignored). See .env.schema.
+
+name: ms-scheduling
+
+x-go-service-base: &go-service-base
+  restart: unless-stopped
+  init: true
+  networks:
+    - staffjoy
+  environment:
+    ENV: development
+    SIGNING_SECRET: ${SIGNING_SECRET}
+    CSRF_SECRET: ${CSRF_SECRET}
+    SENTRY_DSN: ${SENTRY_DSN:-}
+    LOG_LEVEL: ${LOG_LEVEL:-debug}
+
+services:
+  # -------------------------------------------------------------------
+  # Infrastructure
+  # -------------------------------------------------------------------
+  mysql:
+    image: mysql:8.4-oraclelinux9
+    container_name: msched-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devroot}
+      MYSQL_DATABASE: account # bootstrap; we'll create company in init.sql
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+      - --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "${MYSQL_HOST_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
+    networks:
+      - staffjoy
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: msched-mailhog
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_UI_PORT:-8025}:8025"
+    networks:
+      - staffjoy
+
+  # -------------------------------------------------------------------
+  # Account service (gRPC + REST gateway, with migrations)
+  # -------------------------------------------------------------------
+  account-server:
+    <<: *go-service-base
+    container_name: msched-account-server
+    image: ms-scheduling/account-server:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service-migrations
+      args:
+        SERVICE_PATH: account/server
+        MIGRATIONS_PATH: account/migrations
+    environment:
+      ENV: development
+      SIGNING_SECRET: ${SIGNING_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      ACCOUNT_MYSQL_CONFIG: ${ACCOUNT_MYSQL_CONFIG}
+      MIGRATE_DSN: mysql://root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/account?multiStatements=true&charset=utf8mb4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # No container-level healthcheck — the runtime image (alpine for
+    # migration services, distroless static for the rest) has no curl/wget,
+    # and the Go binary has no `healthz` subcommand. Faraday aggregates each
+    # service's HTTP /healthz endpoint, and `make doctor` hits Faraday from
+    # outside the network. See ADR-0004 + W2.5.
+
+  accountapi-service:
+    <<: *go-service-base
+    container_name: msched-account-api
+    image: ms-scheduling/account-api:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: account/api
+    depends_on:
+      account-server:
+        condition: service_started
+
+  # -------------------------------------------------------------------
+  # Company service (gRPC + REST gateway, with migrations)
+  # -------------------------------------------------------------------
+  company-server:
+    <<: *go-service-base
+    container_name: msched-company-server
+    image: ms-scheduling/company-server:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service-migrations
+      args:
+        SERVICE_PATH: company/server
+        MIGRATIONS_PATH: company/migrations
+    environment:
+      ENV: development
+      SIGNING_SECRET: ${SIGNING_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      COMPANY_MYSQL_CONFIG: ${COMPANY_MYSQL_CONFIG}
+      MIGRATE_DSN: mysql://root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/company?multiStatements=true&charset=utf8mb4
+    depends_on:
+      mysql:
+        condition: service_healthy
+    # See accountapi note re: no container healthcheck.
+
+  companyapi-service:
+    <<: *go-service-base
+    container_name: msched-company-api
+    image: ms-scheduling/company-api:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: company/api
+    depends_on:
+      company-server:
+        condition: service_started
+
+  # -------------------------------------------------------------------
+  # Other Go services (no migrations)
+  # -------------------------------------------------------------------
+  whoami-service:
+    <<: *go-service-base
+    container_name: msched-whoami
+    image: ms-scheduling/whoami:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: whoami
+
+  ical-service:
+    <<: *go-service-base
+    container_name: msched-ical
+    image: ms-scheduling/ical:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: ical
+
+  www-service:
+    <<: *go-service-base
+    container_name: msched-www
+    image: ms-scheduling/www:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: www
+
+  # -------------------------------------------------------------------
+  # Frontends (React, served by nginx)
+  # -------------------------------------------------------------------
+  app-service:
+    container_name: msched-app
+    image: ms-scheduling/app:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        APP_PATH: app
+    restart: unless-stopped
+    networks:
+      - staffjoy
+
+  myaccount-service:
+    container_name: msched-myaccount
+    image: ms-scheduling/myaccount:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+      args:
+        APP_PATH: myaccount
+    restart: unless-stopped
+    networks:
+      - staffjoy
+
+  # -------------------------------------------------------------------
+  # Faraday — path-based router; the only service exposed to the host
+  # -------------------------------------------------------------------
+  faraday:
+    <<: *go-service-base
+    container_name: msched-faraday
+    image: ms-scheduling/faraday:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: faraday
+    environment:
+      ENV: development
+      SIGNING_SECRET: ${SIGNING_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      LISTEN_ADDR: ":80"
+    ports:
+      - "${STAFFJOY_PORT:-8080}:80"
+    depends_on:
+      accountapi-service:
+        condition: service_started
+      companyapi-service:
+        condition: service_started
+      www-service:
+        condition: service_started
+    # `make doctor` hits localhost:STAFFJOY_PORT/healthz which faraday
+    # aggregates from each backend.
+
+  # -------------------------------------------------------------------
+  # Optional: notifications (mailgun-go + sms + bot). Profile-gated.
+  # -------------------------------------------------------------------
+  email-server:
+    <<: *go-service-base
+    profiles: [notifications]
+    container_name: msched-email
+    image: ms-scheduling/email-server:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: email/server
+    environment:
+      ENV: development
+      SIGNING_SECRET: ${SIGNING_SECRET}
+      CSRF_SECRET: ${CSRF_SECRET}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      LOG_LEVEL: ${LOG_LEVEL:-debug}
+      MAILGUN_API_KEY: ${MAILGUN_API_KEY:-dev-noop-key}
+      MAILGUN_DOMAIN: ${MAILGUN_DOMAIN:-staffjoy.local}
+      MAILGUN_PUBLIC_API_KEY: ${MAILGUN_PUBLIC_API_KEY:-dev-noop-public}
+      SMTP_HOST: mailhog
+      SMTP_PORT: "1025"
+    depends_on:
+      mailhog:
+        condition: service_started
+
+  sms-server:
+    <<: *go-service-base
+    profiles: [notifications]
+    container_name: msched-sms
+    image: ms-scheduling/sms-server:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: sms/server
+
+  bot-server:
+    <<: *go-service-base
+    profiles: [notifications]
+    container_name: msched-bot
+    image: ms-scheduling/bot-server:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: bot/server
+
+  # -------------------------------------------------------------------
+  # Optional: superpowers — dev-only sudo UI. Profile-gated.
+  # -------------------------------------------------------------------
+  superpowers-service:
+    <<: *go-service-base
+    profiles: [superpowers]
+    container_name: msched-superpowers
+    image: ms-scheduling/superpowers:dev
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.go-service
+      args:
+        SERVICE_PATH: superpowers
+
+# -------------------------------------------------------------------
+networks:
+  staffjoy:
+    driver: bridge
+
+volumes:
+  mysql-data:
