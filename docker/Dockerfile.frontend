@@ -14,12 +14,23 @@ ARG APP_PATH
 RUN test -n "${APP_PATH}" || (echo "ERROR: APP_PATH build-arg is required" && exit 1)
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
-WORKDIR /src
-COPY ${APP_PATH}/package.json ${APP_PATH}/yarn.lock* ${APP_PATH}/pnpm-lock.yaml* ./
-RUN pnpm install --frozen-lockfile || npm install
+WORKDIR /repo
+# Copy the entire repo so app/ + frontend_resources/ + webassets/ keep their
+# sibling layout that webpack relative imports rely on
+# (e.g. `../../../../frontend_resources/images/staffjoy.png`).
+# .dockerignore on the repo root keeps node_modules etc. out.
+COPY ${APP_PATH}/.npmrc* /repo/${APP_PATH}/
+COPY ${APP_PATH}/package.json ${APP_PATH}/yarn.lock* ${APP_PATH}/pnpm-lock.yaml* /repo/${APP_PATH}/
+WORKDIR /repo/${APP_PATH}
+RUN pnpm install --no-frozen-lockfile || npm install
 
-COPY ${APP_PATH}/ ./
+COPY ${APP_PATH}/ /repo/${APP_PATH}/
+COPY frontend_resources /repo/frontend_resources
+COPY webassets /repo/webassets
 RUN pnpm run build || npm run build
+
+# The runtime stage expects /src/dist; bridge that.
+RUN mkdir -p /src && cp -r dist /src/dist
 
 # ---------- runtime stage ----------
 FROM nginx:alpine

@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Provider, ReactReduxContext } from 'react-redux';
 import { Route, Switch } from 'react-router';
 import { BrowserRouter as Router, Redirect } from 'react-router-dom';
-import * as Sentry from '@sentry/react';
+import * as Sentry from '@sentry/browser';
 import configureStore, { history } from 'stores/configureStore';
 import { ConnectedRouter } from 'connected-react-router';
 import Launcher from 'components/Launcher';

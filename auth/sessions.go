@@ -28,10 +28,21 @@ func LoginUser(uuid string, support, rememberMe bool, res http.ResponseWriter) {
 		Name:   cookieName,
 		Value:  token,
 		Path:   "/",
-		Domain: "." + config.ExternalApex,
+		Domain: cookieDomain(),
 		MaxAge: maxAge,
 	}
 	http.SetCookie(res, cookie)
+}
+
+// cookieDomain returns the domain to set on session cookies. In dev (path-
+// based routing on localhost) we leave it empty so the browser scopes the
+// cookie to the current host. In staging/prod we keep the leading-dot
+// subdomain-wide form for cross-subdomain SSO.
+func cookieDomain() string {
+	if config.Debug {
+		return ""
+	}
+	return "." + config.ExternalApex
 }
 
 func getSession(req *http.Request) (uuid string, support bool, err error) {
@@ -52,7 +63,7 @@ func Logout(res http.ResponseWriter) {
 		Value:  "",
 		Path:   "/",
 		MaxAge: -1,
-		Domain: "." + config.ExternalApex,
+		Domain: cookieDomain(),
 	}
 	http.SetCookie(res, cookie)
 }

@@ -75,15 +75,18 @@ var StaffjoyServices = ServiceDirectory{
 	"/whoami": {
 		Security:      Public,
 		BackendDomain: "whoami-service",
+		StripPrefix:   true,
 	},
 	"/ical": {
 		Security:      Public,
 		BackendDomain: "ical-service",
+		StripPrefix:   true,
 	},
 	"/superpowers": {
 		Security:      Authenticated,
 		RestrictDev:   true,
 		BackendDomain: "superpowers-service",
+		StripPrefix:   true,
 	},
 	"/": {
 		// www (marketing + login + signup + logout) is the catch-all.

@@ -67,16 +67,18 @@ func healthzAggregator(svcs services.ServiceDirectory, envName string) http.Hand
 				continue
 			}
 			wg.Add(1)
-			go func(prefix string, host string) {
+			go func(prefix string, svc services.Service) {
 				defer wg.Done()
-				res := probe(ctx, host)
+				res := probe(ctx, svc.BackendDomain)
 				mu.Lock()
 				out.Services[prefix] = res
-				if res.Status != "ok" {
+				// RestrictDev services are profile-gated in compose; an
+				// unreachable one is "not in scope," not a degradation.
+				if res.Status != "ok" && !svc.RestrictDev {
 					out.Status = "degraded"
 				}
 				mu.Unlock()
-			}(prefix, svc.BackendDomain)
+			}(prefix, svc)
 		}
 
 		wg.Wait()

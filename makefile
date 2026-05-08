@@ -26,7 +26,7 @@ COMPOSE ?= docker compose
 PORT ?= $(if $(STAFFJOY_PORT),$(STAFFJOY_PORT),8080)
 
 # Active services for `make doctor` to probe via Faraday.
-DOCTOR_PATHS := / /health /whoami
+DOCTOR_PATHS := / /health
 
 # ---------------------------------------------------------------------
 # Help (default target)

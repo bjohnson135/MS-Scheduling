@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
-import * as Sentry from '@sentry/react';
+import * as Sentry from '@sentry/browser';
 import configureStore from './stores/configureStore';
 import App from './components/App';
 import { detectEnvironment } from './utility';

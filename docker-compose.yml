@@ -43,7 +43,9 @@ services:
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
-      - --default-authentication-plugin=mysql_native_password
+      # MySQL 8.4 removed --default-authentication-plugin (deprecated in 8.0).
+      # Default is caching_sha2_password; the go-sql-driver/mysql client
+      # supports it natively as of v1.6.0+.
     volumes:
       - mysql-data:/var/lib/mysql
       - ./db/init:/docker-entrypoint-initdb.d:ro
@@ -86,7 +88,10 @@ services:
       CSRF_SECRET: ${CSRF_SECRET}
       SENTRY_DSN: ${SENTRY_DSN:-}
       LOG_LEVEL: ${LOG_LEVEL:-debug}
-      ACCOUNT_MYSQL_CONFIG: ${ACCOUNT_MYSQL_CONFIG}
+      # account/server/main.go reads MYSQL_CONFIG and appends ?parseTime=true,
+      # so the value here must be the plain go-sql-driver DSN form (no scheme,
+      # no leading params).
+      MYSQL_CONFIG: root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/account
       MIGRATE_DSN: mysql://root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/account?multiStatements=true&charset=utf8mb4
     depends_on:
       mysql:
@@ -129,7 +134,8 @@ services:
       CSRF_SECRET: ${CSRF_SECRET}
       SENTRY_DSN: ${SENTRY_DSN:-}
       LOG_LEVEL: ${LOG_LEVEL:-debug}
-      COMPANY_MYSQL_CONFIG: ${COMPANY_MYSQL_CONFIG}
+      # See note on MYSQL_CONFIG format under account-server.
+      MYSQL_CONFIG: root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/company
       MIGRATE_DSN: mysql://root:${MYSQL_ROOT_PASSWORD:-devroot}@tcp(mysql:3306)/company?multiStatements=true&charset=utf8mb4
     depends_on:
       mysql:
