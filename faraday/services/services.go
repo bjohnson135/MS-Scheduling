@@ -66,11 +66,16 @@ var StaffjoyServices = ServiceDirectory{
 		Security:      Authenticated,
 		BackendDomain: "app-service",
 		NoCacheHTML:   true,
+		// Webpack publicPath is set to /app/ so the bundle references
+		// /app/main-<hash>.bundle.js. Faraday strips /app before
+		// forwarding so nginx serves /usr/share/nginx/html/main-…
+		StripPrefix: true,
 	},
 	"/myaccount": {
 		Security:      Authenticated,
 		BackendDomain: "myaccount-service",
 		NoCacheHTML:   true,
+		StripPrefix:   true,
 	},
 	"/whoami": {
 		Security:      Public,

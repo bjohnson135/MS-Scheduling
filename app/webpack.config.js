@@ -16,7 +16,12 @@ module.exports = (env, options) => {
             './src/index.js'
         ],
         output: {
-            publicPath: '/',
+            // Mounted under /app/ in Faraday's path-based routing (ADR-0004).
+            // Faraday strips the /app prefix before the request reaches nginx,
+            // so the bundle lives at /usr/share/nginx/html/main-<hash>.bundle.js
+            // but the browser must reference /app/main-<hash>.bundle.js so the
+            // request goes back through Faraday → app-service.
+            publicPath: '/app/',
             path: path.resolve(__dirname, 'dist'),
             filename: '[name]-[contenthash].bundle.js',
             chunkFilename: '[name]-[contenthash].chunk.js'
