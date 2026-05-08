@@ -72,7 +72,9 @@ services:
   # -------------------------------------------------------------------
   # Account service (gRPC + REST gateway, with migrations)
   # -------------------------------------------------------------------
-  account-server:
+  # Service name MUST equal account/constants.go Endpoint
+  # ("accountserver-service:1000") so gRPC clients resolve it via compose DNS.
+  accountserver-service:
     <<: *go-service-base
     container_name: msched-account-server
     image: ms-scheduling/account-server:dev
@@ -112,13 +114,14 @@ services:
       args:
         SERVICE_PATH: account/api
     depends_on:
-      account-server:
+      accountserver-service:
         condition: service_started
 
   # -------------------------------------------------------------------
   # Company service (gRPC + REST gateway, with migrations)
   # -------------------------------------------------------------------
-  company-server:
+  # See note on accountserver-service.
+  companyserver-service:
     <<: *go-service-base
     container_name: msched-company-server
     image: ms-scheduling/company-server:dev
@@ -152,7 +155,7 @@ services:
       args:
         SERVICE_PATH: company/api
     depends_on:
-      company-server:
+      companyserver-service:
         condition: service_started
 
   # -------------------------------------------------------------------
@@ -249,7 +252,7 @@ services:
   # -------------------------------------------------------------------
   # Optional: notifications (mailgun-go + sms + bot). Profile-gated.
   # -------------------------------------------------------------------
-  email-server:
+  emailserver-service:
     <<: *go-service-base
     profiles: [notifications]
     container_name: msched-email
@@ -274,7 +277,7 @@ services:
       mailhog:
         condition: service_started
 
-  sms-server:
+  smsserver-service:
     <<: *go-service-base
     profiles: [notifications]
     container_name: msched-sms
@@ -285,7 +288,7 @@ services:
       args:
         SERVICE_PATH: sms/server
 
-  bot-server:
+  botserver-service:
     <<: *go-service-base
     profiles: [notifications]
     container_name: msched-bot

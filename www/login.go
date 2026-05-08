@@ -3,13 +3,11 @@ package main
 import (
 	"html/template"
 	"net/http"
-	"net/url"
 	"strings"
 
 	"golang.org/x/net/context"
 
 	"google.golang.org/grpc/metadata"
-	"v2.staffjoy.com/faraday/services"
 
 	"v2.staffjoy.com/account"
 	"v2.staffjoy.com/auth"
@@ -31,17 +29,22 @@ type loginPage struct {
 	ReturnTo      string
 }
 
-// isValidSub returns true if url contains valid subdomain
-func isValidSub(sub string) bool {
-	u, err := url.Parse(sub)
-	if err != nil {
-		logger.Errorf("can't parse url %v", err)
+// isValidReturnPath returns true if returnTo is a safe in-app path that we
+// can redirect a freshly-logged-in user to. With path-based routing on a
+// single host (ADR-0004), the only valid return_to is a path beginning
+// with "/" that matches a registered Faraday prefix. Absolute URLs (with
+// scheme + host) are rejected so an attacker can't redirect off-host.
+func isValidReturnPath(p string) bool {
+	if p == "" || !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") {
 		return false
 	}
-
-	bare := strings.Replace(u.Host, "."+config.ExternalApex, "", -1)
-	for k := range services.StaffjoyServices {
-		if k == bare {
+	// Reject anything that looks like it has a host component.
+	if strings.Contains(p, "://") {
+		return false
+	}
+	allowed := []string{"/app", "/myaccount", "/whoami", "/ical", "/superpowers"}
+	for _, a := range allowed {
+		if p == a || strings.HasPrefix(p, a+"/") {
 			return true
 		}
 	}
@@ -51,8 +54,7 @@ func isValidSub(sub string) bool {
 func loginHandler(res http.ResponseWriter, req *http.Request) {
 	// if logged in - go away
 	if req.Header.Get(auth.AuthorizationHeader) == auth.AuthorizationAuthenticatedUser {
-		destination := &url.URL{Host: "myaccount." + config.ExternalApex, Scheme: "http"}
-		http.Redirect(res, req, destination.String(), http.StatusFound)
+		http.Redirect(res, req, "/myaccount/", http.StatusFound)
 		return
 	}
 
@@ -95,23 +97,15 @@ func loginHandler(res http.ResponseWriter, req *http.Request) {
 
 			logger.WithFields(logrus.Fields{"user_uuid": user.Uuid}).Info("Logging in user")
 
-			scheme := "https"
-			if config.Name == "development" || config.Name == "test" {
-				scheme = "http"
-			}
-
-			if returnTo == "" {
-				destination := &url.URL{Host: "app." + config.ExternalApex, Scheme: scheme}
-				returnTo = destination.String()
-			} else {
-				returnTo = "http://" + returnTo
-
-				// sanitize
-				if !isValidSub(returnTo) {
-					destination := &url.URL{Host: "myaccount." + config.ExternalApex, Scheme: scheme}
-					returnTo = destination.String()
+			// Path-based routing: return_to must already be an in-app path
+			// like "/app/team/123". Default landing is /app/. Any unsafe
+			// value falls back to /myaccount/.
+			if !isValidReturnPath(returnTo) {
+				if returnTo == "" {
+					returnTo = "/app/"
+				} else {
+					returnTo = "/myaccount/"
 				}
-
 			}
 
 			http.Redirect(res, req, returnTo, http.StatusFound)

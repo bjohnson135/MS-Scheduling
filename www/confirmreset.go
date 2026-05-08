@@ -3,7 +3,6 @@ package main
 import (
 	"html/template"
 	"net/http"
-	"net/url"
 
 	"google.golang.org/grpc/metadata"
 
@@ -96,17 +95,19 @@ func confirmResetHandler(res http.ResponseWriter, req *http.Request) {
 			if err != nil {
 				panic(err)
 			}
-			var destination *url.URL
-			if len(admin.Companies) != 0 || a.Support {
-				destination = &url.URL{Host: "app." + config.ExternalApex, Scheme: "http"}
-			} else if len(w.Teams) != 0 {
-				destination = &url.URL{Host: "myaccount." + config.ExternalApex, Scheme: "http"}
-			} else {
+			// Path-based routing (ADR-0004) — pick a destination by role.
+			var destination string
+			switch {
+			case len(admin.Companies) != 0 || a.Support:
+				destination = "/app/"
+			case len(w.Teams) != 0:
+				destination = "/myaccount/"
+			default:
 				// onboard
-				destination = &url.URL{Host: "www." + config.ExternalApex, Path: "/new-company/", Scheme: "http"}
+				destination = "/new-company/"
 			}
 
-			http.Redirect(res, req, destination.String(), http.StatusFound)
+			http.Redirect(res, req, destination, http.StatusFound)
 		}
 		page.ErrorMessage = "Your password must be at least 6 characters long"
 	}
