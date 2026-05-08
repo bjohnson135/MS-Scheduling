@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"net/http"
 	"os"
 
@@ -13,9 +14,10 @@ import (
 	"v2.staffjoy.com/company"
 	"v2.staffjoy.com/environments"
 	"v2.staffjoy.com/healthcheck"
-
-	rice "github.com/GeertJohan/go.rice"
 )
+
+//go:embed swagger/company.swagger.json
+var swaggerFS embed.FS
 
 const (
 	// ServiceName identifies this app in logs
@@ -45,23 +47,14 @@ func run() error {
 
 	mux := http.NewServeMux()
 
-	// find swagger rice.Box
-	swaggerBox, err := rice.FindBox("swagger")
+	swaggerJSON, err := swaggerFS.ReadFile("swagger/company.swagger.json")
 	if err != nil {
 		panic(err)
 	}
 
 	mux.HandleFunc("/swagger.json", func(res http.ResponseWriter, req *http.Request) {
 		res.Header().Set("Content-Type", "application/json")
-
-		// get json
-		tmpl, err := swaggerBox.Bytes("company.swagger.json")
-
-		if err != nil {
-			panic(err)
-		}
-
-		res.Write(tmpl)
+		res.Write(swaggerJSON)
 	})
 
 	mux.HandleFunc(healthcheck.HEALTHPATH, healthcheck.Handler)
