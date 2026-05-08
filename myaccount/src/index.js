@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux';
-import Raven from 'raven-js';
+import * as Sentry from '@sentry/react';
 import configureStore from './stores/configureStore';
 import App from './components/App';
 import { detectEnvironment } from './utility';
@@ -17,12 +17,13 @@ require('./main.scss');
 const currentEnv = detectEnvironment();
 
 if (currentEnv !== ENV_NAME_DEVELOPMENT) {
-  const sentryKey = (currentEnv === ENV_NAME_PRODUCTION)
+  const sentryDSN = (currentEnv === ENV_NAME_PRODUCTION)
     ? SENTRY_PRODUCTION_KEY : SENTRY_STAGING_KEY;
 
-  Raven
-    .config(sentryKey)
-    .install();
+  Sentry.init({
+    dsn: sentryDSN,
+    environment: currentEnv,
+  });
 }
 
 const store = configureStore();

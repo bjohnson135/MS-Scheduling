@@ -90,8 +90,12 @@ func NewRouter(config environments.Config, logger *logrus.Entry) http.Handler {
 	externalRouter := mux.NewRouter()
 	internalRouter := mux.NewRouter().PathPrefix("/").Subrouter().StrictSlash(true)
 
-	// Make this available always, e.g. for kubernetes health checks
-	externalRouter.HandleFunc(healthcheck.HEALTHPATH, healthcheck.Handler)
+	// Faraday's /health is an aggregator: it probes every backend and
+	// returns 200 only if all are healthy. `make doctor` hits this from
+	// outside the docker network. Backends still expose their own
+	// /health endpoints (handled by healthcheck.Handler) on the
+	// internal network.
+	externalRouter.HandleFunc(healthcheck.HEALTHPATH, healthzAggregator(services.StaffjoyServices, config.Name))
 	externalRouter.HandleFunc(MobileConfigPath, MobileConfigHandler)
 
 	sentryPublicDSN, err := environments.GetPublicSentryDSN(config.GetSentryDSN())
