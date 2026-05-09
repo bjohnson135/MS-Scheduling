@@ -27,5 +27,5 @@ func (a *Entry) Log(logger *logrus.Entry, action string) {
 	for k, v := range entryMap {
 		logger = logger.WithFields(logrus.Fields{k: v})
 	}
-	logger.Infof(action)
+	logger.Info(action)
 }

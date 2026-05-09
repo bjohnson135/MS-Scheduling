@@ -509,6 +509,9 @@ func (s *accountServer) RequestPasswordReset(ctx context.Context, req *pb.Passwo
 		return nil, status.Errorf(codes.InvalidArgument, "No user with that email exists")
 	}
 	a, err := s.Get(ctx, &pb.GetAccountRequest{Uuid: existingUser})
+	if err != nil {
+		return nil, s.internalError(err, "could not load account for password-reset email")
+	}
 
 	token, err := crypto.EmailConfirmationToken(a.Uuid, a.Email, s.signingToken)
 	if err != nil {
@@ -688,6 +691,9 @@ func (s *accountServer) SyncUser(ctx context.Context, req *pb.SyncUserRequest) (
 	memberships := make(map[string]*company.Company)
 
 	workerOfList, err := companyClient.GetWorkerOf(newCtx, &company.WorkerOfRequest{UserUuid: u.Uuid})
+	if err != nil {
+		return nil, s.internalError(err, "could not fetch worker-of list for user")
+	}
 	isWorker := len(workerOfList.Teams) > 0
 	for _, t := range workerOfList.Teams {
 		c, err := companyClient.GetCompany(newCtx, &company.GetCompanyRequest{Uuid: t.CompanyUuid})

@@ -54,7 +54,7 @@ func TestGetErrorClientSucceeds(t *testing.T) {
 	assert := assert.New(t)
 	testDsn := "dsn_not_dns"
 	conf := &FakeConfig{debug: false, dsn: testDsn}
-	fmt.Printf(conf.dsn)
+	fmt.Printf("%s", conf.dsn)
 
 	out := ErrorClient(conf)
 	assert.NotNil(out)

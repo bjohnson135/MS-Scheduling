@@ -43,6 +43,9 @@ func GetOldData() (*OldData, error) {
 		Timeout: timeout,
 	}
 	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("constructing suite KPI request: %w", err)
+	}
 
 	req.SetBasicAuth(apiKey, os.Getenv("SUITE_API_KEY"))
 	resp, err := client.Do(req)

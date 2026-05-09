@@ -1,0 +1,28 @@
+# golangci-lint configuration (v1 schema; CI pins v1.61.0).
+#
+# Inherited from Staffjoy v2 / LandRover with sparse test coverage and many
+# `res.Write` handlers from the original 2017 codebase.
+#
+# Strategy: must-have linters ON (real-bug finders); style-only and
+# noisy-on-legacy linters OFF until polish PRs clean them up.
+#
+# Must-haves enabled below:
+#   - govet         — printf format strings, lock copies, struct tag bugs
+#   - staticcheck   — deprecated APIs, dead code, real bug patterns
+#   - ineffassign   — variables assigned but never read
+#
+# Disabled (each gets its own polish PR before re-enabling — see TODOS.md):
+#   - errcheck      — 32 res.Write / ListenAndServe / grpcServer.Serve sites.
+#                     Needs a per-handler audit + writeJSON helper.
+#   - unused        — 9 dead-code sites. Audit + delete in a focused PR.
+#   - gosimple      — 12 style nits (S1002, S1023, S1003, S1011). Cosmetic.
+
+run:
+  timeout: 5m
+
+linters:
+  disable-all: true
+  enable:
+    - govet
+    - staticcheck
+    - ineffassign

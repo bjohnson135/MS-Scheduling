@@ -37,5 +37,5 @@ func httpEnvHandler(w http.ResponseWriter, r *http.Request) {
 	for _, e := range os.Environ() {
 		fmt.Fprintln(b, e)
 	}
-	fmt.Fprintf(w, b.String())
+	fmt.Fprint(w, b.String())
 }
