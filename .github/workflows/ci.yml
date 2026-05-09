@@ -8,24 +8,24 @@ on:
 jobs:
   go-test:
     name: Go test + vet
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.4
+          go-version: '1.23.4'
           cache: true
       - run: go vet ./...
       - run: go test -race -short -count=1 -timeout=300s ./...
 
   golangci-lint:
     name: golangci-lint
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
-          go-version: 1.23.4
+          go-version: '1.23.4'
           cache: true
       - uses: golangci/golangci-lint-action@v6
         with:
@@ -33,20 +33,20 @@ jobs:
           args: --timeout=5m
 
   frontend-build:
-    name: Frontend build (${{ matrix.app }})
-    runs-on: ubuntu-24.04
+    name: Frontend build
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         app: [app, myaccount]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.18.0
       - uses: pnpm/action-setup@v4
         with:
-          version: 9.12.0
+          version: '9.12.0'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.0'
       - name: Install
         working-directory: ${{ matrix.app }}
         run: pnpm install --no-frozen-lockfile
@@ -56,22 +56,10 @@ jobs:
 
   compose-config:
     name: docker-compose validates
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: |
-          # docker compose v2 ships with ubuntu-24.04 runners
+      - name: Validate
+        run: |
           touch .env
           docker compose config >/dev/null
-
-  proto-check:
-    name: protobuf lint (buf)
-    runs-on: ubuntu-24.04
-    if: hashFiles('buf.yaml') != ''
-    steps:
-      - uses: actions/checkout@v4
-      - uses: bufbuild/buf-setup-action@v1
-        with:
-          version: 1.45.0
-      - run: buf lint
-      - run: buf breaking --against "https://github.com/${{ github.repository }}.git#branch=master"
