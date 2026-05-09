@@ -35,7 +35,7 @@ type loginPage struct {
 // with "/" that matches a registered Faraday prefix. Absolute URLs (with
 // scheme + host) are rejected so an attacker can't redirect off-host.
 func isValidReturnPath(p string) bool {
-	if p == "" || !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") {
+	if p == "" || !strings.HasPrefix(p, "/") || strings.HasPrefix(p, "//") || strings.HasPrefix(p, "/\\") {
 		return false
 	}
 	// Reject anything that looks like it has a host component.
