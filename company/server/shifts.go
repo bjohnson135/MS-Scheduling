@@ -349,6 +349,9 @@ func (s *companyServer) noChange(s1 *pb.Shift, s2 *pb.Shift) bool {
 
 func (s *companyServer) UpdateShift(ctx context.Context, req *pb.Shift) (*pb.Shift, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.CompanyUuid); err != nil {

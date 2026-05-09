@@ -196,6 +196,9 @@ func (s *companyServer) GetDirectoryEntry(ctx context.Context, req *pb.Directory
 
 func (s *companyServer) UpdateDirectoryEntry(ctx context.Context, req *pb.DirectoryEntry) (*pb.DirectoryEntry, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.CompanyUuid); err != nil {

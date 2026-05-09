@@ -59,6 +59,9 @@ func newCompanyHandler(res http.ResponseWriter, req *http.Request) {
 		defer close()
 
 		currentUser, err := accountClient.Get(ctx, &account.GetAccountRequest{Uuid: currentUserUUID})
+		if err != nil {
+			panic(err)
+		}
 
 		companyClient, companyClose, err := company.NewClient()
 		if err != nil {

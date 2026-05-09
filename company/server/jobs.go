@@ -127,6 +127,9 @@ func (s *companyServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.
 
 func (s *companyServer) UpdateJob(ctx context.Context, req *pb.Job) (*pb.Job, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.CompanyUuid); err != nil {

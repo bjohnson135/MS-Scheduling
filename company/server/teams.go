@@ -147,6 +147,9 @@ func (s *companyServer) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*p
 
 func (s *companyServer) UpdateTeam(ctx context.Context, req *pb.Team) (*pb.Team, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.CompanyUuid); err != nil {
@@ -196,6 +199,9 @@ func (s *companyServer) UpdateTeam(ctx context.Context, req *pb.Team) (*pb.Team,
 // need to be refactored at some point
 func (s *companyServer) GetWorkerTeamInfo(ctx context.Context, req *pb.Worker) (*pb.Worker, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
