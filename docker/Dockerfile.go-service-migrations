@@ -1,0 +1,59 @@
+# Multistage Dockerfile for Go services that also ship SQL migrations
+# (account/server, company/server). The migrations directory is copied
+# alongside the binary so the runtime container can run `golang-migrate`
+# at boot via the entrypoint shim.
+#
+# Build args:
+#   SERVICE_PATH    — repo-relative path to the service main package.
+#   MIGRATIONS_PATH — repo-relative path to the migrations dir.
+#
+# Build:
+#   docker build -f docker/Dockerfile.go-service-migrations \
+#       --build-arg SERVICE_PATH=account/server \
+#       --build-arg MIGRATIONS_PATH=account/migrations \
+#       -t ghcr.io/bjohnson135/ms-scheduling/account-server:dev .
+
+ARG GO_VERSION=1.23.4
+ARG MIGRATE_VERSION=v4.18.1
+
+# ---------- migrate fetch stage ----------
+FROM golang:${GO_VERSION}-alpine AS migrate-fetch
+ARG MIGRATE_VERSION
+RUN apk add --no-cache git ca-certificates
+RUN go install -tags 'mysql' \
+    github.com/golang-migrate/migrate/v4/cmd/migrate@${MIGRATE_VERSION}
+
+# ---------- build stage ----------
+FROM golang:${GO_VERSION}-alpine AS build
+ARG SERVICE_PATH
+RUN test -n "${SERVICE_PATH}" || (echo "ERROR: SERVICE_PATH build-arg is required" && exit 1)
+
+RUN apk add --no-cache git ca-certificates
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux \
+    go build -trimpath -ldflags='-s -w' \
+    -o /out/service ./${SERVICE_PATH}
+
+# ---------- runtime stage ----------
+# Distroless static doesn't have a shell. We need /bin/sh for the migration
+# entrypoint shim, so use distroless:base or alpine. alpine is smaller after
+# multistage, retains a shell, and is fine for non-public-facing services.
+FROM alpine:3.20
+ARG MIGRATIONS_PATH
+RUN test -n "${MIGRATIONS_PATH}" || (echo "ERROR: MIGRATIONS_PATH build-arg is required" && exit 1)
+RUN apk add --no-cache ca-certificates && \
+    addgroup -S app && adduser -S app -G app
+
+COPY --from=migrate-fetch /go/bin/migrate /usr/local/bin/migrate
+COPY --from=build /out/service /app/service
+COPY ${MIGRATIONS_PATH}/ /app/migrations/
+COPY docker/entrypoint-migrating-service.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown -R app:app /app
+
+USER app
+ENTRYPOINT ["/app/entrypoint.sh"]

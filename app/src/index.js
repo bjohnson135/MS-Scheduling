@@ -3,7 +3,7 @@ import ReactDOM from 'react-dom';
 import { Provider, ReactReduxContext } from 'react-redux';
 import { Route, Switch } from 'react-router';
 import { BrowserRouter as Router, Redirect } from 'react-router-dom';
-import Raven from 'raven-js';
+import * as Sentry from '@sentry/browser';
 import configureStore, { history } from 'stores/configureStore';
 import { ConnectedRouter } from 'connected-react-router';
 import Launcher from 'components/Launcher';
@@ -28,11 +28,12 @@ require('./main.scss');
 const currentEnv = detectEnvironment();
 
 if (currentEnv !== ENV_NAME_DEVELOPMENT) {
-  const sentryKey = (currentEnv === ENV_NAME_PRODUCTION) ?
+  const sentryDSN = (currentEnv === ENV_NAME_PRODUCTION) ?
     SENTRY_PRODUCTION_KEY : SENTRY_STAGING_KEY;
-  Raven
-    .config(sentryKey)
-    .install();
+  Sentry.init({
+    dsn: sentryDSN,
+    environment: currentEnv,
+  });
 }
 
 const store = configureStore();

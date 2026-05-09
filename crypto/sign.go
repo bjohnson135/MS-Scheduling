@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
+	"github.com/golang-jwt/jwt/v5"
 )
 
 // EmailConfirmationToken provides a signed piece of info that can be
@@ -14,7 +14,7 @@ func EmailConfirmationToken(uuid, email, signingToken string) (string, error) {
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"email": email,
 		"uuid":  uuid,
-		"exp":   time.Now().Add(time.Duration(2 * time.Hour)).Unix(),
+		"exp":   jwt.NewNumericDate(time.Now().Add(2 * time.Hour)),
 	}).SignedString([]byte(signingToken))
 
 	if err != nil {
@@ -26,12 +26,11 @@ func EmailConfirmationToken(uuid, email, signingToken string) (string, error) {
 // VerifyEmailConfirmationToken takes a token, and returns the uuid and email if valid.
 func VerifyEmailConfirmationToken(tokenString, signingToken string) (email string, uuid string, err error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(signingToken), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Name}))
 
 	if err != nil {
 		return
@@ -55,7 +54,7 @@ func SessionToken(uuid, signingToken string, support bool, dur time.Duration) (s
 	token, err := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.MapClaims{
 		"uuid":    uuid,
 		"support": support,
-		"exp":     time.Now().Add(dur).Unix(),
+		"exp":     jwt.NewNumericDate(time.Now().Add(dur)),
 	}).SignedString([]byte(signingToken))
 
 	if err != nil {
@@ -67,12 +66,11 @@ func SessionToken(uuid, signingToken string, support bool, dur time.Duration) (s
 // RetrieveSessionInformation takes a session token, and returns its validated contents
 func RetrieveSessionInformation(tokenString, signingToken string) (uuid string, support bool, err error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Don't forget to validate the alg is what you expect:
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Unexpected signing method: %v", token.Header["alg"])
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return []byte(signingToken), nil
-	})
+	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS512.Name}))
 
 	if err != nil {
 		return

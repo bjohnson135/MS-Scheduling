@@ -2,13 +2,15 @@
 package errorpages
 
 import (
+	"embed"
 	"encoding/base64"
 	"io"
 	"net/http"
 	"text/template"
-
-	rice "github.com/GeertJohan/go.rice"
 )
+
+//go:embed assets/error.tmpl assets/staffjoy_coffee.png
+var assetsFS embed.FS
 
 // Split this out so we can mock in tests
 type errorTemplate interface {
@@ -59,28 +61,21 @@ func init() {
 	Assets()
 }
 
-// Assets loading template and image
+// Assets loads the error template and the inline image from the embedded FS.
 func Assets() {
-	// find swagger rice.Box
-	assetsBox, err := rice.FindBox("assets")
+	templateBytes, err := assetsFS.ReadFile("assets/error.tmpl")
 	if err != nil {
-		panic(err)
+		panic("unable to find error template in embedded assets: " + err.Error())
 	}
 
-	// get json
-	templateString, err := assetsBox.String("error.tmpl")
+	tmpl, err = template.New("Error").Parse(string(templateBytes))
 	if err != nil {
-		panic("Unable to find error template in rice box")
+		panic("unable to parse error template: " + err.Error())
 	}
 
-	tmpl, err = template.New("Error").Parse(string(templateString))
+	imgFile, err := assetsFS.ReadFile("assets/staffjoy_coffee.png")
 	if err != nil {
-		panic("Unable to parse error template")
-	}
-
-	imgFile, err := assetsBox.Bytes("staffjoy_coffee.png")
-	if err != nil {
-		panic("Unable to find error image in rice box")
+		panic("unable to find error image in embedded assets: " + err.Error())
 	}
 
 	imageBase64 = base64.StdEncoding.EncodeToString(imgFile)

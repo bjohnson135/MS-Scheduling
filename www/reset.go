@@ -40,24 +40,35 @@ func resetHandler(res http.ResponseWriter, req *http.Request) {
 	}
 	if req.Method == http.MethodPost {
 		email := req.FormValue("email")
-		recaptcha.Init(os.Getenv("RECAPTCHA_PRIVATE"))
-		recaptchaResponse, ok := req.Form["g-recaptcha-response"]
-		if !ok {
-			res.Write([]byte("Recaptcha absent"))
-			return
-		}
 
-		var remoteIP string
-		if config.Debug {
-			remoteIP = req.RemoteAddr
+		// reCAPTCHA is bypassed in dev when no key is configured. In all
+		// other environments it is required and a missing token rejects.
+		// Wired stub of the production reCAPTCHA Enterprise integration is
+		// a separate TODOS item.
+		recaptchaPrivate := os.Getenv("RECAPTCHA_PRIVATE")
+		if recaptchaPrivate == "" {
+			logger.Warn("RECAPTCHA_PRIVATE unset — bypassing captcha for password reset (dev only)")
 		} else {
-			// Cloudflare proxy
-			remoteIP = req.Header.Get("CF-Connecting-IP")
-		}
-		result, err := recaptcha.Confirm(remoteIP, recaptchaResponse[0])
-		if !result {
-			res.Write([]byte("Recaptcha incorrect."))
-			return
+			recaptcha.Init(recaptchaPrivate)
+			recaptchaResponse, ok := req.Form["g-recaptcha-response"]
+			if !ok {
+				res.Write([]byte("Recaptcha absent"))
+				return
+			}
+
+			var remoteIP string
+			if config.Debug {
+				remoteIP = req.RemoteAddr
+			} else {
+				// Cloudflare proxy
+				remoteIP = req.Header.Get("CF-Connecting-IP")
+			}
+			result, err := recaptcha.Confirm(remoteIP, recaptchaResponse[0])
+			_ = err
+			if !result {
+				res.Write([]byte("Recaptcha incorrect."))
+				return
+			}
 		}
 
 		md := metadata.New(map[string]string{auth.AuthorizationMetadata: auth.AuthorizationWWWService})

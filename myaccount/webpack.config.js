@@ -16,7 +16,9 @@ module.exports = (env, options) => {
             './src/index.js'
         ],
         output: {
-            publicPath: '/',
+            // Mounted under /myaccount/ in Faraday's path-based routing.
+            // See app/webpack.config.js for the same explanation.
+            publicPath: '/myaccount/',
             path: path.resolve(__dirname, 'dist'),
             filename: '[name]-[contenthash].bundle.js',
             chunkFilename: '[name]-[contenthash].chunk.js'

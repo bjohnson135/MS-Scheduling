@@ -158,9 +158,16 @@ func main() {
 	n.Use(middlewares.NewRecovery(ServiceName, config, sentryPublicDSN))
 	n.UseHandler(r)
 
+	// In dev (path-based on localhost) leave the cookie Domain empty so the
+	// browser scopes the cookie to the current host. In staging/prod use
+	// the apex so the cookie is shared across subdomains.
+	csrfDomain := ""
+	if !config.Debug {
+		csrfDomain = config.ExternalApex
+	}
 	CSRF := csrf.Protect(
 		[]byte(signingToken),
-		csrf.Domain(config.ExternalApex),
+		csrf.Domain(csrfDomain),
 		csrf.Secure(!config.Debug),
 		csrf.Path("/"),
 		csrf.CookieName("sjcsrf"),

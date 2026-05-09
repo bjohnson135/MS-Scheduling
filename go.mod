@@ -1,6 +1,8 @@
 module v2.staffjoy.com
 
-go 1.18
+go 1.23
+
+toolchain go1.23.4
 
 require (
 	github.com/GeertJohan/go.rice v1.0.2
@@ -10,7 +12,7 @@ require (
 	github.com/go-gorp/gorp v2.2.0+incompatible
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/gogo/protobuf v1.3.2
-	github.com/golang-jwt/jwt/v4 v4.4.1
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/csrf v1.7.1
 	github.com/gorilla/mux v1.8.0

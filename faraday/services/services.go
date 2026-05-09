@@ -1,6 +1,14 @@
 package services
 
-// Configuration for back-end services
+// Configuration for back-end services.
+//
+// Faraday uses path-based routing on a single host (default: localhost:8080).
+// Path prefixes here are matched against the incoming request URL.Path; the
+// service to which the request is proxied is determined by the longest
+// matching prefix.
+//
+// See ADR-0004 for the rationale (path-based routing replaces the
+// subdomain model that depended on `*.staffjoy-v2.local` DNS).
 
 const (
 	// Public security means a user may be logged out or logged in
@@ -11,96 +19,83 @@ const (
 	Admin = iota
 )
 
-// ServiceDirectory allows access to a backend service using its subdomain
+// ServiceDirectory maps a path prefix to a backend Service.
 type ServiceDirectory map[string]Service
 
-// Service is an app on Staffjoy that runs on a subdomain
+// Service describes a backend that Faraday proxies requests to.
 type Service struct {
-	Security      int    // Public, Authenticated, or Admin
-	RestrictDev   bool   // If True, service is suppressed in stage and prod
-	BackendDomain string // Backend service to query
-	NoCacheHTML   bool   // If True, injects a header for HTML responses telling the browser not to cache HTML
+	// Security is the access policy applied before the proxy is hit.
+	Security int
 
+	// RestrictDev=true suppresses the service in staging and production.
+	RestrictDev bool
+
+	// BackendDomain is the in-network hostname of the backend (matches the
+	// service name in docker-compose.yml).
+	BackendDomain string
+
+	// NoCacheHTML, when true, instructs the browser not to cache HTML
+	// responses for this service.
+	NoCacheHTML bool
+
+	// StripPrefix, when true, strips the matched path prefix before
+	// proxying. Used for backends that aren't aware of their mount point
+	// (e.g. /api/account/v1/... -> the backend sees /v1/...).
+	StripPrefix bool
 }
 
-// StaffjoyServices is a map of subdomains -> specs
-// Sudomain is <string> + Env["rootDomain"]
-// e.g. "login" service on prod is "login" + "staffjoy.com""
+// StaffjoyServices is the live route table.
 //
-// KEEP THIS LIST IN ALPHABETICAL ORDER please
+// Path prefixes are exact-prefix matches and are evaluated in longest-prefix-
+// first order at runtime (see PathToService in service_mw.go).
+//
+// Order in this map does not matter; the runtime sort handles it. The
+// "/" entry is the catch-all and goes to the marketing site.
 var StaffjoyServices = ServiceDirectory{
-	"account": {
-		Security:      Authenticated,
-		RestrictDev:   false,
+	"/api/account": {
+		Security:      Public, // gateway translates REST to gRPC; authn happens further in
 		BackendDomain: "accountapi-service",
+		StripPrefix:   true,
 	},
-	"app": {
+	"/api/company": {
+		Security:      Public,
+		BackendDomain: "companyapi-service",
+		StripPrefix:   true,
+	},
+	"/app": {
 		Security:      Authenticated,
-		RestrictDev:   false,
 		BackendDomain: "app-service",
 		NoCacheHTML:   true,
+		// Webpack publicPath is set to /app/ so the bundle references
+		// /app/main-<hash>.bundle.js. Faraday strips /app before
+		// forwarding so nginx serves /usr/share/nginx/html/main-…
+		StripPrefix: true,
 	},
-	"code": {
-		Security:      Public,
-		RestrictDev:   false,
-		BackendDomain: "code-service",
-	},
-	"company": {
+	"/myaccount": {
 		Security:      Authenticated,
-		RestrictDev:   false,
-		BackendDomain: "companyapi-service",
-	},
-	"faraday": {
-		// Debug site for faraday
-		Security:      Public,
-		RestrictDev:   true,
-		BackendDomain: "httpbin.org",
-	},
-	"euler": {
-		Security:      Admin,
-		RestrictDev:   true,
-		BackendDomain: "euler-service",
-		NoCacheHTML:   true,
-	},
-	"ical": {
-		Security:      Public,
-		RestrictDev:   false,
-		BackendDomain: "ical-service",
-	},
-	"login": {
-		Security:      Public,
-		RestrictDev:   false,
-		BackendDomain: "login-service",
-	},
-	"myaccount": {
-		Security:      Authenticated,
-		RestrictDev:   false,
 		BackendDomain: "myaccount-service",
 		NoCacheHTML:   true,
+		StripPrefix:   true,
 	},
-	"superpowers": {
+	"/whoami": {
+		Security:      Public,
+		BackendDomain: "whoami-service",
+		StripPrefix:   true,
+	},
+	"/ical": {
+		Security:      Public,
+		BackendDomain: "ical-service",
+		StripPrefix:   true,
+	},
+	"/superpowers": {
 		Security:      Authenticated,
 		RestrictDev:   true,
 		BackendDomain: "superpowers-service",
+		StripPrefix:   true,
 	},
-	"signal": {
-		Security:      Admin,
-		RestrictDev:   false,
-		BackendDomain: "signal.staffjoy.com",
-	},
-	"waitlist": {
+	"/": {
+		// www (marketing + login + signup + logout) is the catch-all.
 		Security:      Public,
-		RestrictDev:   false,
-		BackendDomain: "waitlist-service",
-	},
-	"whoami": {
-		Security:      Public,
-		RestrictDev:   false,
-		BackendDomain: "whoami-service",
-	},
-	"www": {
-		Security:      Public,
-		RestrictDev:   false,
 		BackendDomain: "www-service",
 	},
 }
