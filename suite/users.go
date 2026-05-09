@@ -48,6 +48,9 @@ func AccountExists(email string) (exists bool, err error) {
 		Timeout: timeout,
 	}
 	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return
+	}
 	req.SetBasicAuth(apiKey, "")
 	resp, err := client.Do(req)
 	if err != nil {

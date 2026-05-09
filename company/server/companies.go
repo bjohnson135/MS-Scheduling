@@ -123,6 +123,9 @@ func (s *companyServer) GetCompany(ctx context.Context, req *pb.GetCompanyReques
 
 func (s *companyServer) UpdateCompany(ctx context.Context, req *pb.Company) (*pb.Company, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.Uuid); err != nil {

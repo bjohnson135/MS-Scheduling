@@ -58,6 +58,9 @@ func GetOldData() (*OldData, error) {
 	}
 
 	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading suite KPI response: %w", err)
+	}
 	var od OldData
 	if err = json.Unmarshal(body, &od); err != nil {
 		return nil, err
