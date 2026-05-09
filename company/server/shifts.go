@@ -7,9 +7,9 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/auth"
 	"v2.staffjoy.com/bot"
@@ -34,7 +34,7 @@ func (s *companyServer) CreateShift(ctx context.Context, req *pb.CreateShiftRequ
 		}
 	case auth.AuthorizationAuthenticatedUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -42,7 +42,7 @@ func (s *companyServer) CreateShift(ctx context.Context, req *pb.CreateShiftRequ
 	}
 	if req.JobUuid != "" {
 		if _, err = s.GetJob(ctx, &pb.GetJobRequest{Uuid: req.JobUuid, CompanyUuid: req.CompanyUuid, TeamUuid: req.TeamUuid}); err != nil {
-			return nil, grpc.Errorf(codes.InvalidArgument, "Invalid job parameter")
+			return nil, status.Errorf(codes.InvalidArgument, "Invalid job parameter")
 		}
 	}
 
@@ -59,9 +59,9 @@ func (s *companyServer) CreateShift(ctx context.Context, req *pb.CreateShiftRequ
 
 	dur := req.Stop.Sub(req.Start)
 	if dur <= 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "stop must be after start")
+		return nil, status.Errorf(codes.InvalidArgument, "stop must be after start")
 	} else if dur > maxShiftDuration {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Shifts exceed max %f hour duration", maxShiftDuration.Hours())
+		return nil, status.Errorf(codes.InvalidArgument, "Shifts exceed max %f hour duration", maxShiftDuration.Hours())
 	}
 
 	shift := &pb.Shift{Uuid: uuid.String(), CompanyUuid: req.CompanyUuid, TeamUuid: req.TeamUuid, JobUuid: req.JobUuid, Start: req.Start, Stop: req.Stop, Published: req.Published, UserUuid: req.UserUuid}
@@ -109,7 +109,7 @@ func (s *companyServer) ListWorkerShifts(ctx context.Context, req *pb.WorkerShif
 	case auth.AuthorizationBotService:
 	case auth.AuthorizationICalService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -117,7 +117,7 @@ func (s *companyServer) ListWorkerShifts(ctx context.Context, req *pb.WorkerShif
 	}
 
 	if req.ShiftStartAfter.After(req.ShiftStartBefore) {
-		return nil, grpc.Errorf(codes.InvalidArgument, "shift_start_after must be before shift_start_before")
+		return nil, status.Errorf(codes.InvalidArgument, "shift_start_after must be before shift_start_before")
 	}
 	res := &pb.ShiftList{ShiftStartAfter: req.ShiftStartAfter, ShiftStartBefore: req.ShiftStartBefore}
 
@@ -147,7 +147,7 @@ func (s *companyServer) ListShifts(ctx context.Context, req *pb.ShiftListRequest
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -156,16 +156,16 @@ func (s *companyServer) ListShifts(ctx context.Context, req *pb.ShiftListRequest
 
 	shiftStartAfter, err := time.Parse(time.RFC3339, req.ShiftStartAfter)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "shift_start_after could not be parsed")
+		return nil, status.Errorf(codes.InvalidArgument, "shift_start_after could not be parsed")
 	}
 
 	shiftStartBefore, err := time.Parse(time.RFC3339, req.ShiftStartBefore)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "shift_start_before could not be parsed")
+		return nil, status.Errorf(codes.InvalidArgument, "shift_start_before could not be parsed")
 	}
 
 	if shiftStartAfter.After(shiftStartBefore) {
-		return nil, grpc.Errorf(codes.InvalidArgument, "shift_start_after must be before shift_start_before")
+		return nil, status.Errorf(codes.InvalidArgument, "shift_start_after must be before shift_start_before")
 	}
 	res := &pb.ShiftList{ShiftStartAfter: shiftStartAfter, ShiftStartBefore: shiftStartBefore}
 
@@ -294,7 +294,7 @@ func (s *companyServer) GetShift(ctx context.Context, req *pb.GetShiftRequest) (
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -305,7 +305,7 @@ func (s *companyServer) GetShift(ctx context.Context, req *pb.GetShiftRequest) (
 	if err != nil {
 		return nil, s.internalError(err, "unable to query database")
 	} else if obj == nil {
-		return nil, grpc.Errorf(codes.NotFound, "shift not found")
+		return nil, status.Errorf(codes.NotFound, "shift not found")
 	}
 	shift := obj.(*pb.Shift)
 	shift.CompanyUuid = req.CompanyUuid
@@ -349,6 +349,9 @@ func (s *companyServer) noChange(s1 *pb.Shift, s2 *pb.Shift) bool {
 
 func (s *companyServer) UpdateShift(ctx context.Context, req *pb.Shift) (*pb.Shift, error) {
 	md, authz, err := getAuth(ctx)
+	if err != nil {
+		return nil, s.internalError(err, "failed to authorize")
+	}
 	switch authz {
 	case auth.AuthorizationAuthenticatedUser:
 		if err = s.PermissionCompanyAdmin(md, req.CompanyUuid); err != nil {
@@ -356,12 +359,12 @@ func (s *companyServer) UpdateShift(ctx context.Context, req *pb.Shift) (*pb.Shi
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	orig, err := s.GetShift(ctx, &pb.GetShiftRequest{Uuid: req.Uuid, TeamUuid: req.TeamUuid, CompanyUuid: req.CompanyUuid})
 	if err != nil {
-		return nil, grpc.Errorf(codes.NotFound, "shift not found")
+		return nil, status.Errorf(codes.NotFound, "shift not found")
 	}
 
 	if s.noChange(orig, req) {
@@ -382,9 +385,9 @@ func (s *companyServer) UpdateShift(ctx context.Context, req *pb.Shift) (*pb.Shi
 
 	dur := req.Stop.Sub(req.Start)
 	if dur <= 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "stop must be after start")
+		return nil, status.Errorf(codes.InvalidArgument, "stop must be after start")
 	} else if dur > maxShiftDuration {
-		return nil, grpc.Errorf(codes.InvalidArgument, "duration exceeds max %f hour duration", maxShiftDuration.Hours())
+		return nil, status.Errorf(codes.InvalidArgument, "duration exceeds max %f hour duration", maxShiftDuration.Hours())
 	}
 
 	if _, err := s.dbMap.Update(req); err != nil {
@@ -465,7 +468,7 @@ func (s *companyServer) DeleteShift(ctx context.Context, req *pb.GetShiftRequest
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	orig, err := s.GetShift(ctx, &pb.GetShiftRequest{Uuid: req.Uuid, TeamUuid: req.TeamUuid, CompanyUuid: req.CompanyUuid})

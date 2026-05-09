@@ -2,7 +2,7 @@ package main
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -30,7 +30,7 @@ func TestConfigPathReturnsConfig(t *testing.T) {
 	assert.NoError(err)
 	r.ServeHTTP(rec, req)
 
-	body, err := ioutil.ReadAll(rec.Body)
+	body, err := io.ReadAll(rec.Body)
 	assert.NoError(err)
 	assert.Equal(rec.Code, http.StatusOK)
 	assert.Equal("application/json", rec.Header().Get("Content-Type"))
@@ -60,10 +60,8 @@ func TestMobileConfigRegex(t *testing.T) {
 		{"http://7bridg.es", false},
 	}
 
+	re := regexp.MustCompile(MobileConfigRegex)
 	for _, test := range testDomains {
-		match, err := regexp.MatchString(MobileConfigRegex, test.domain)
-		assert.NoError(err)
-		assert.Equal(test.allowed, match)
-
+		assert.Equal(test.allowed, re.MatchString(test.domain))
 	}
 }

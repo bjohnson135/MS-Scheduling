@@ -39,12 +39,27 @@ export function detectEnvironment() {
   return env;
 }
 
-export function routeToMicroservice(service, path = '') {
-  const devRoute = `${HTTP_PREFIX}${service}${DEVELOPMENT_APEX}${path}`;
+// devPathPrefix maps a service name to the path Faraday routes to it on
+// localhost (path-based routing — see ADR-0004).
+const devPathPrefix = {
+  whoami: '/whoami',
+  account: '/api/account',
+  company: '/api/company',
+  myaccount: '/myaccount',
+  app: '/app',
+  ical: '/ical',
+  superpowers: '/superpowers',
+  www: '',
+};
 
+export function routeToMicroservice(service, path = '') {
   switch (detectEnvironment()) {
-    case ENV_NAME_DEVELOPMENT:
-      return devRoute;
+    case ENV_NAME_DEVELOPMENT: {
+      const prefix = devPathPrefix[service] !== undefined
+        ? devPathPrefix[service]
+        : `/${service}`;
+      return prefix + path;
+    }
 
     case ENV_NAME_STAGING:
       return `${HTTPS_PREFIX}${service}${STAGING_APEX}${path}`;
@@ -52,8 +67,12 @@ export function routeToMicroservice(service, path = '') {
     case ENV_NAME_PRODUCTION:
       return `${HTTPS_PREFIX}${service}${PRODUCTION_APEX}${path}`;
 
-    default:
-      return devRoute;
+    default: {
+      const prefix = devPathPrefix[service] !== undefined
+        ? devPathPrefix[service]
+        : `/${service}`;
+      return prefix + path;
+    }
   }
 }
 

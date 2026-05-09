@@ -1,9 +1,9 @@
 package main
 
 import (
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/auth"
 )
 
@@ -23,7 +23,7 @@ func (s *companyServer) PermissionCompanyAdmin(md metadata.MD, companyUUID strin
 		return s.internalError(err, "failed to check company admin permissions")
 	}
 	if !ok {
-		return grpc.Errorf(codes.PermissionDenied, "you do not have admin access to this service")
+		return status.Errorf(codes.PermissionDenied, "you do not have admin access to this service")
 	}
 	return nil
 }
@@ -54,7 +54,7 @@ func (s *companyServer) PermissionTeamWorker(md metadata.MD, companyUUID, teamUU
 		// worker in team - allow access
 		return nil
 	}
-	return grpc.Errorf(codes.PermissionDenied, "you do not have worker access to this team")
+	return status.Errorf(codes.PermissionDenied, "you do not have worker access to this team")
 }
 
 // PermissionCompanyDirectory checks whether a user exists in the directory of a company. It is the lowest level of security.
@@ -72,7 +72,7 @@ func (s *companyServer) PermissionCompanyDirectory(md metadata.MD, companyUUID s
 		return s.internalError(err, "failed to check directory existence")
 	}
 	if !ok {
-		return grpc.Errorf(codes.PermissionDenied, "you are not associated with this company")
+		return status.Errorf(codes.PermissionDenied, "you are not associated with this company")
 	}
 	return nil
 }

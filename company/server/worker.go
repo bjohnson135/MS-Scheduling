@@ -2,8 +2,8 @@ package main
 
 import (
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"v2.staffjoy.com/auth"
@@ -25,7 +25,7 @@ func (s *companyServer) ListWorkers(ctx context.Context, req *pb.WorkerListReque
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{CompanyUuid: req.CompanyUuid, Uuid: req.TeamUuid}); err != nil {
@@ -67,7 +67,7 @@ func (s *companyServer) GetWorker(ctx context.Context, req *pb.Worker) (*pb.Dire
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{CompanyUuid: req.CompanyUuid, Uuid: req.TeamUuid}); err != nil {
 		return nil, err
@@ -78,7 +78,7 @@ func (s *companyServer) GetWorker(ctx context.Context, req *pb.Worker) (*pb.Dire
 	if err != nil {
 		return nil, s.internalError(err, "failed to query database")
 	} else if !exists {
-		return nil, grpc.Errorf(codes.NotFound, "worker relationship not found")
+		return nil, status.Errorf(codes.NotFound, "worker relationship not found")
 	}
 	return s.GetDirectoryEntry(ctx, &pb.DirectoryEntryRequest{CompanyUuid: req.CompanyUuid, UserUuid: req.UserUuid})
 }
@@ -96,7 +96,7 @@ func (s *companyServer) DeleteWorker(ctx context.Context, req *pb.Worker) (*empt
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetWorker(ctx, req); err != nil {
@@ -126,7 +126,7 @@ func (s *companyServer) GetWorkerOf(ctx context.Context, req *pb.WorkerOfRequest
 		//  This is an internal endpoint
 	case auth.AuthorizationWhoamiService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	res := &pb.WorkerOfList{UserUuid: req.UserUuid}
@@ -166,7 +166,7 @@ func (s *companyServer) CreateWorker(ctx context.Context, req *pb.Worker) (*pb.D
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err := s.GetTeam(ctx, &pb.GetTeamRequest{CompanyUuid: req.CompanyUuid, Uuid: req.TeamUuid}); err != nil {
@@ -179,8 +179,8 @@ func (s *companyServer) CreateWorker(ctx context.Context, req *pb.Worker) (*pb.D
 
 	_, err = s.GetWorker(ctx, req)
 	if err == nil {
-		return nil, grpc.Errorf(codes.AlreadyExists, "user is already a worker")
-	} else if grpc.Code(err) != codes.NotFound {
+		return nil, status.Errorf(codes.AlreadyExists, "user is already a worker")
+	} else if status.Code(err) != codes.NotFound {
 		return nil, s.internalError(err, "an unknown error occurred while checking for existing worker relationships")
 	}
 

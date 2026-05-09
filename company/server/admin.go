@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/auth"
 	pb "v2.staffjoy.com/company"
 	"v2.staffjoy.com/helpers"
@@ -23,7 +23,7 @@ func (s *companyServer) ListAdmins(ctx context.Context, req *pb.AdminListRequest
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid}); err != nil {
@@ -65,7 +65,7 @@ func (s *companyServer) GetAdmin(ctx context.Context, req *pb.DirectoryEntryRequ
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid}); err != nil {
@@ -78,7 +78,7 @@ func (s *companyServer) GetAdmin(ctx context.Context, req *pb.DirectoryEntryRequ
 	if err != nil {
 		return nil, s.internalError(err, "failed to query database")
 	} else if !exists {
-		return nil, grpc.Errorf(codes.NotFound, "admin relationship not found")
+		return nil, status.Errorf(codes.NotFound, "admin relationship not found")
 	}
 	return s.GetDirectoryEntry(ctx, req)
 }
@@ -96,7 +96,7 @@ func (s *companyServer) DeleteAdmin(ctx context.Context, req *pb.DirectoryEntryR
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	_, err = s.GetAdmin(ctx, req)
@@ -127,12 +127,12 @@ func (s *companyServer) CreateAdmin(ctx context.Context, req *pb.DirectoryEntryR
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 	_, err = s.GetAdmin(ctx, req)
 	if err == nil {
-		return nil, grpc.Errorf(codes.AlreadyExists, "user is already an admin")
-	} else if grpc.Code(err) != codes.NotFound {
+		return nil, status.Errorf(codes.AlreadyExists, "user is already an admin")
+	} else if status.Code(err) != codes.NotFound {
 		return nil, s.internalError(err, "an unknown error occurred while checking existing relationships")
 	}
 
@@ -168,11 +168,11 @@ func (s *companyServer) GetAdminOf(ctx context.Context, req *pb.AdminOfRequest) 
 
 		}
 		if uuid != req.UserUuid {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+			return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	res := &pb.AdminOfList{UserUuid: req.UserUuid}

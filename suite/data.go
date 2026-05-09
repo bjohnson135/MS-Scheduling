@@ -3,7 +3,7 @@ package suite
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -43,6 +43,9 @@ func GetOldData() (*OldData, error) {
 		Timeout: timeout,
 	}
 	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("constructing suite KPI request: %w", err)
+	}
 
 	req.SetBasicAuth(apiKey, os.Getenv("SUITE_API_KEY"))
 	resp, err := client.Do(req)
@@ -54,7 +57,10 @@ func GetOldData() (*OldData, error) {
 		return nil, fmt.Errorf("Unexpected suite status when querying users api - %s", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading suite KPI response: %w", err)
+	}
 	var od OldData
 	if err = json.Unmarshal(body, &od); err != nil {
 		return nil, err

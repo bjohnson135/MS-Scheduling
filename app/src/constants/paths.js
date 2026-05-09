@@ -114,14 +114,33 @@ export function getRoute(routeName, params = {}) {
   }
 }
 
+// devPathPrefix maps a service name to the path Faraday routes to it on
+// localhost (path-based routing — see ADR-0004). Mirrors faraday/services/services.go.
+const devPathPrefix = {
+  whoami: '/whoami',
+  account: '/api/account',
+  company: '/api/company',
+  myaccount: '/myaccount',
+  app: '/app',
+  ical: '/ical',
+  superpowers: '/superpowers',
+  www: '', // www is the catch-all, lives at root
+};
+
 export function routeToMicroservice(service, path = '', urlParams = {}) {
-  const devRoute = `${HTTP_PREFIX}${service}${DEVELOPMENT_APEX}${path}`;
   let fullPath = '';
 
   switch (detectEnvironment()) {
-    case ENV_NAME_DEVELOPMENT:
-      fullPath = devRoute;
+    case ENV_NAME_DEVELOPMENT: {
+      // Path-based routing: same host, prefix maps to backend via Faraday.
+      // Use a relative URL so the browser inherits the current scheme + host
+      // (default localhost:8080, but works for any STAFFJOY_PORT override).
+      const prefix = devPathPrefix[service] !== undefined
+        ? devPathPrefix[service]
+        : `/${service}`;
+      fullPath = prefix + path;
       break;
+    }
 
     case ENV_NAME_STAGING:
       fullPath = `${HTTPS_PREFIX}${service}${STAGING_APEX}${path}`;
@@ -132,7 +151,7 @@ export function routeToMicroservice(service, path = '', urlParams = {}) {
       break;
 
     default:
-      fullPath = devRoute;
+      fullPath = (devPathPrefix[service] !== undefined ? devPathPrefix[service] : `/${service}`) + path;
       break;
   }
 

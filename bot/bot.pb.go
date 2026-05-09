@@ -6,12 +6,13 @@ package bot
 import (
 	context "context"
 	fmt "fmt"
+	math "math"
+
 	proto "github.com/gogo/protobuf/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
-	math "math"
 	company "v2.staffjoy.com/company"
 )
 

@@ -9,9 +9,9 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/ttacon/libphonenumber"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/auditlog"
 	"v2.staffjoy.com/auth"
 	"v2.staffjoy.com/sms"
@@ -26,7 +26,7 @@ func (s *accountServer) internalError(err error, format string, a ...interface{}
 	if s.errorClient != nil {
 		s.errorClient.CaptureError(err, nil)
 	}
-	return grpc.Errorf(codes.Unknown, format, a...)
+	return status.Errorf(codes.Unknown, format, a...)
 }
 
 // ParseAndFormatPhonenumber takes a raw input phone number,

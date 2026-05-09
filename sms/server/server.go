@@ -8,8 +8,8 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/auth"
 	"v2.staffjoy.com/environments"
 	pb "v2.staffjoy.com/sms"
@@ -37,7 +37,7 @@ func (s *smsServer) QueueSend(ctx context.Context, req *pb.SmsRequest) (*empty.E
 	case auth.AuthorizationBotService:
 	case auth.AuthorizationAccountService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	if s.sendingConfig.WhitelistOnly {

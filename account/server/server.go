@@ -14,9 +14,9 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	pb "v2.staffjoy.com/account"
@@ -50,7 +50,7 @@ func (s *accountServer) GetOrCreate(ctx context.Context, req *pb.GetOrCreateRequ
 	var err error
 	req.Email = strings.ToLower(req.Email)
 	if req.Phonenumber, err = ParseAndFormatPhonenumber(req.Phonenumber); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid phone number")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid phone number")
 	}
 	// check for existing user
 	var existingUserUUID string
@@ -78,16 +78,16 @@ func (s *accountServer) GetAccountByPhonenumber(ctx context.Context, req *pb.Get
 
 	var err error
 	if req.Phonenumber, err = ParseAndFormatPhonenumber(req.Phonenumber); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid phone number")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid phone number")
 	}
 	if req.Phonenumber == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "No phonenumber provided")
+		return nil, status.Errorf(codes.InvalidArgument, "No phonenumber provided")
 	}
 
 	var uuid string
 	err = s.db.QueryRow("SELECT uuid FROM account WHERE phonenumber=?", req.Phonenumber).Scan(&uuid)
 	if err == sql.ErrNoRows {
-		return nil, grpc.Errorf(codes.NotFound, "")
+		return nil, status.Errorf(codes.NotFound, "")
 	} else if err != nil {
 		return nil, s.internalError(err, "failed to query database for existing phonenumber")
 	}
@@ -106,19 +106,19 @@ func (s *accountServer) Create(ctx context.Context, req *pb.CreateAccountRequest
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationCompanyService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if (len(req.Email) + len(req.Name) + len(req.Phonenumber)) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Empty request")
+		return nil, status.Errorf(codes.InvalidArgument, "Empty request")
 	}
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	if len(req.Email) > 0 && strings.Index(req.Email, "@") == -1 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid email")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid email")
 	}
 	req.Phonenumber, err = ParseAndFormatPhonenumber(req.Phonenumber)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid phone number")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid phone number")
 	}
 
 	if req.Email != "" {
@@ -127,7 +127,7 @@ func (s *accountServer) Create(ctx context.Context, req *pb.CreateAccountRequest
 		err = s.db.QueryRow("SELECT uuid FROM account WHERE email=?", req.Email).Scan(&existingUser)
 		// We expect an sql.ErrNoRows, which means that the user doesn't exist.
 		if err == nil {
-			return nil, grpc.Errorf(codes.AlreadyExists, "A user with that email already exists. Try a password reset")
+			return nil, status.Errorf(codes.AlreadyExists, "A user with that email already exists. Try a password reset")
 		} else if err != sql.ErrNoRows {
 			return nil, s.internalError(err, "An unknown error occurred while searching for that email.")
 		}
@@ -135,8 +135,8 @@ func (s *accountServer) Create(ctx context.Context, req *pb.CreateAccountRequest
 	if req.Phonenumber != "" {
 		_, err = s.GetAccountByPhonenumber(ctx, &pb.GetAccountByPhonenumberRequest{Phonenumber: req.Phonenumber})
 		if err == nil {
-			return nil, grpc.Errorf(codes.AlreadyExists, "A user with that phonenumber already exists. Try a password reset.")
-		} else if grpc.Code(err) != codes.NotFound {
+			return nil, status.Errorf(codes.AlreadyExists, "A user with that phonenumber already exists. Try a password reset.")
+		} else if status.Code(err) != codes.NotFound {
 			return nil, s.internalError(err, "An unknown error occurred")
 		}
 	}
@@ -202,11 +202,11 @@ func (s *accountServer) List(ctx context.Context, req *pb.GetAccountListRequest)
 	switch authz {
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if req.Offset < 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid offset - must be greater than or equal to zero")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid offset - must be greater than or equal to zero")
 	}
 	if req.Limit <= 0 {
 		// Set a default
@@ -251,26 +251,26 @@ func (s *accountServer) Get(ctx context.Context, req *pb.GetAccountRequest) (*pb
 			return nil, s.internalError(err, "failed to find current user uuid %v", md)
 		}
 		if uuid != req.Uuid {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+			return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 		}
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationSuperpowersService:
 		if s.config.Name != "development" {
 			s.logger.Warningf("Development service trying to connect outside development environment")
-			return nil, grpc.Errorf(codes.PermissionDenied, "This service is not available outside development environments")
+			return nil, status.Errorf(codes.PermissionDenied, "This service is not available outside development environments")
 		}
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if req.Uuid == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "uuid must be specified")
+		return nil, status.Errorf(codes.InvalidArgument, "uuid must be specified")
 	}
 	obj, err := s.dbMap.Get(pb.Account{}, req.Uuid)
 	if err != nil {
 		return nil, s.internalError(err, "Unable to query database")
 	} else if obj == nil {
-		return nil, grpc.Errorf(codes.NotFound, "User with id %s not found", req.Uuid)
+		return nil, status.Errorf(codes.NotFound, "User with id %s not found", req.Uuid)
 	}
 	return obj.(*pb.Account), nil
 }
@@ -290,16 +290,16 @@ func (s *accountServer) Update(ctx context.Context, req *pb.Account) (*pb.Accoun
 
 		}
 		if uuid != req.Uuid {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+			return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 		}
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationSuperpowersService:
 		if s.config.Name != "development" {
 			s.logger.Warningf("Development service trying to connect outside development environment")
-			return nil, grpc.Errorf(codes.PermissionDenied, "This service is not available outside development environments")
+			return nil, status.Errorf(codes.PermissionDenied, "This service is not available outside development environments")
 		}
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 	al := newAuditEntry(md, "account", req.Uuid)
 
@@ -312,11 +312,11 @@ func (s *accountServer) Update(ctx context.Context, req *pb.Account) (*pb.Accoun
 
 	// Some validations
 	if req.Phonenumber, err = ParseAndFormatPhonenumber(req.Phonenumber); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid phone number")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid phone number")
 	}
 	req.Email = strings.ToLower(req.Email)
 	if !req.MemberSince.Equal(existing.MemberSince) {
-		return nil, grpc.Errorf(codes.PermissionDenied, "You cannot modify the member_since date")
+		return nil, status.Errorf(codes.PermissionDenied, "You cannot modify the member_since date")
 	}
 	if req.Email != "" && (req.Email != existing.Email) {
 		// Check to see if account exists
@@ -324,7 +324,7 @@ func (s *accountServer) Update(ctx context.Context, req *pb.Account) (*pb.Accoun
 		err = s.db.QueryRow("SELECT uuid FROM account WHERE email=?", req.Email).Scan(&existingUser)
 		// We expect an sql.ErrNoRows, which means that the user doesn't exist.
 		if err == nil {
-			return nil, grpc.Errorf(codes.AlreadyExists, "A user with that email already exists. Try a password reset")
+			return nil, status.Errorf(codes.AlreadyExists, "A user with that email already exists. Try a password reset")
 		} else if err != sql.ErrNoRows {
 			return nil, s.internalError(err, "An unknown error occurred while searching for that email.")
 		}
@@ -332,21 +332,21 @@ func (s *accountServer) Update(ctx context.Context, req *pb.Account) (*pb.Accoun
 	if req.Phonenumber != "" && (req.Phonenumber != existing.Phonenumber) {
 		_, err = s.GetAccountByPhonenumber(ctx, &pb.GetAccountByPhonenumberRequest{Phonenumber: req.Phonenumber})
 		if err == nil {
-			return nil, grpc.Errorf(codes.AlreadyExists, "A user with that phonenumber already exists. Try a password reset.")
-		} else if grpc.Code(err) != codes.NotFound {
+			return nil, status.Errorf(codes.AlreadyExists, "A user with that phonenumber already exists. Try a password reset.")
+		} else if status.Code(err) != codes.NotFound {
 			return nil, s.internalError(err, "An unknown error occurred")
 		}
 	}
 
 	if authz == auth.AuthorizationAuthenticatedUser {
 		if (req.ConfirmedAndActive != existing.ConfirmedAndActive) && (existing.ConfirmedAndActive == false) {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You cannot activate this account")
+			return nil, status.Errorf(codes.PermissionDenied, "You cannot activate this account")
 		}
 		if req.Support != existing.Support {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You cannot change the support parameter")
+			return nil, status.Errorf(codes.PermissionDenied, "You cannot change the support parameter")
 		}
 		if req.PhotoUrl != existing.PhotoUrl {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You cannot change the photo through this endpoint (see docs)")
+			return nil, status.Errorf(codes.PermissionDenied, "You cannot change the photo through this endpoint (see docs)")
 		}
 		// User can request email change - not do it :-)
 		if req.Email != existing.Email {
@@ -390,21 +390,21 @@ func (s *accountServer) UpdatePassword(ctx context.Context, req *pb.UpdatePasswo
 
 		}
 		if uuid != req.Uuid {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+			return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 		}
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 	al := newAuditEntry(md, "account", req.Uuid)
 
 	// Verify inputs
 	if req.Uuid == "" {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid UUID")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid UUID")
 	}
 	if len(req.Password) < minPasswordLength {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid password - it must be at least %d characters long", minPasswordLength)
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid password - it must be at least %d characters long", minPasswordLength)
 	}
 	salt, err := crypto.NewSalt()
 	if err != nil {
@@ -428,7 +428,7 @@ func (s *accountServer) UpdatePassword(ctx context.Context, req *pb.UpdatePasswo
 		return nil, s.internalError(err, "Failed to read the database")
 	}
 	if affected != 1 {
-		return nil, grpc.Errorf(codes.NotFound, "")
+		return nil, status.Errorf(codes.NotFound, "")
 	}
 	al.Log(logger, "updated password")
 	go helpers.TrackEventFromMetadata(md, "password_updated")
@@ -445,7 +445,7 @@ func (s *accountServer) VerifyPassword(ctx context.Context, req *pb.VerifyPasswo
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
@@ -456,15 +456,15 @@ func (s *accountServer) VerifyPassword(ctx context.Context, req *pb.VerifyPasswo
 	// We expect an sql.ErrNoRows, which means that the user doesn't exist.
 	switch {
 	case err == sql.ErrNoRows:
-		return nil, grpc.Errorf(codes.NotFound, "")
+		return nil, status.Errorf(codes.NotFound, "")
 	case err != nil:
 		return nil, s.internalError(err, "Unable to query database")
 	default:
 		if !confirmedAndActive.Bool {
-			return nil, grpc.Errorf(codes.PermissionDenied, "This user has not confirmed their account")
+			return nil, status.Errorf(codes.PermissionDenied, "This user has not confirmed their account")
 		}
 		if len(dbHash.String) == 0 {
-			return nil, grpc.Errorf(codes.PermissionDenied, "This user has not set up their password ")
+			return nil, status.Errorf(codes.PermissionDenied, "This user has not set up their password ")
 		}
 
 		if err != nil {
@@ -472,7 +472,7 @@ func (s *accountServer) VerifyPassword(ctx context.Context, req *pb.VerifyPasswo
 		}
 
 		if crypto.CheckPasswordHash([]byte(dbHash.String), []byte(salt.String), []byte(req.Password)) != nil {
-			return nil, grpc.Errorf(codes.Unauthenticated, "Incorrect password")
+			return nil, status.Errorf(codes.Unauthenticated, "Incorrect password")
 		}
 
 		a, err := s.Get(ctx, &pb.GetAccountRequest{Uuid: uuid.String})
@@ -495,20 +495,23 @@ func (s *accountServer) RequestPasswordReset(ctx context.Context, req *pb.Passwo
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	req.Email = strings.TrimSpace(strings.ToLower(req.Email))
 	if len(req.Email) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "No UUID provided")
+		return nil, status.Errorf(codes.InvalidArgument, "No UUID provided")
 	}
 
 	var existingUser string
 	err = s.db.QueryRow("SELECT uuid FROM account WHERE email=?", req.Email).Scan(&existingUser)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "No user with that email exists")
+		return nil, status.Errorf(codes.InvalidArgument, "No user with that email exists")
 	}
 	a, err := s.Get(ctx, &pb.GetAccountRequest{Uuid: existingUser})
+	if err != nil {
+		return nil, s.internalError(err, "could not load account for password-reset email")
+	}
 
 	token, err := crypto.EmailConfirmationToken(a.Uuid, a.Email, s.signingToken)
 	if err != nil {
@@ -562,21 +565,21 @@ func (s *accountServer) RequestEmailChange(ctx context.Context, req *pb.EmailCha
 
 		}
 		if uuid != req.Uuid {
-			return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+			return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	newEmail := strings.TrimSpace(strings.ToLower(req.Email))
 	if len(req.Uuid) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "No UUID provided")
+		return nil, status.Errorf(codes.InvalidArgument, "No UUID provided")
 	}
 
 	a, err := s.Get(ctx, &pb.GetAccountRequest{Uuid: req.Uuid})
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "No user with that email exists")
+		return nil, status.Errorf(codes.InvalidArgument, "No user with that email exists")
 	}
 
 	token, err := crypto.EmailConfirmationToken(a.Uuid, newEmail, s.signingToken)
@@ -614,7 +617,7 @@ func (s *accountServer) ChangeEmail(ctx context.Context, req *pb.EmailConfirmati
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 	al := newAuditEntry(md, "account", req.Uuid)
 
@@ -629,7 +632,7 @@ func (s *accountServer) ChangeEmail(ctx context.Context, req *pb.EmailConfirmati
 		return nil, s.internalError(err, "Failed to read the database")
 	}
 	if affected != 1 {
-		return nil, grpc.Errorf(codes.NotFound, "")
+		return nil, status.Errorf(codes.NotFound, "")
 	}
 
 	go s.SyncUser(ctx, &pb.SyncUserRequest{Uuid: req.Uuid})
@@ -688,6 +691,9 @@ func (s *accountServer) SyncUser(ctx context.Context, req *pb.SyncUserRequest) (
 	memberships := make(map[string]*company.Company)
 
 	workerOfList, err := companyClient.GetWorkerOf(newCtx, &company.WorkerOfRequest{UserUuid: u.Uuid})
+	if err != nil {
+		return nil, s.internalError(err, "could not fetch worker-of list for user")
+	}
 	isWorker := len(workerOfList.Teams) > 0
 	for _, t := range workerOfList.Teams {
 		c, err := companyClient.GetCompany(newCtx, &company.GetCompanyRequest{Uuid: t.CompanyUuid})
@@ -698,6 +704,9 @@ func (s *accountServer) SyncUser(ctx context.Context, req *pb.SyncUserRequest) (
 	}
 
 	adminOfList, err := companyClient.GetAdminOf(newCtx, &company.AdminOfRequest{UserUuid: u.Uuid})
+	if err != nil {
+		return nil, s.internalError(err, "could not fetch admin-of list for user")
+	}
 	isAdmin := len(adminOfList.Companies) > 0
 	for _, c := range adminOfList.Companies {
 		memberships[c.Uuid] = &c

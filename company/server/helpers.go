@@ -8,9 +8,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/account"
 	"v2.staffjoy.com/auditlog"
 	"v2.staffjoy.com/auth"
@@ -47,7 +47,7 @@ func (s *companyServer) internalError(err error, format string, a ...interface{}
 	if s.errorClient != nil {
 		s.errorClient.CaptureError(err, nil)
 	}
-	return grpc.Errorf(codes.Unknown, format, a...)
+	return status.Errorf(codes.Unknown, format, a...)
 }
 
 func sanitizeDayOfWeek(input string) (string, error) {

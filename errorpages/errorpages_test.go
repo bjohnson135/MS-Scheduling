@@ -3,7 +3,6 @@ package errorpages
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,7 +29,7 @@ func TestNotFound(t *testing.T) {
 	assert.Equal(http.StatusNotFound, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "doesn't exist")
 
@@ -50,7 +49,7 @@ func TestInternalServerError(t *testing.T) {
 	assert.Equal(http.StatusInternalServerError, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Server Error")
 
@@ -70,7 +69,7 @@ func TestTooManyRequests(t *testing.T) {
 	assert.Equal(http.StatusTooManyRequests, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Too Many Requests")
 
@@ -90,7 +89,7 @@ func TestForbidden(t *testing.T) {
 	assert.Equal(http.StatusForbidden, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Forbidden")
 
@@ -110,7 +109,7 @@ func TestGatewayTimeout(t *testing.T) {
 	assert.Equal(http.StatusGatewayTimeout, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Timeout")
 
@@ -132,7 +131,7 @@ func TestFailedTemplateFallsBackToPlaintext(t *testing.T) {
 	assert.Equal(p.HeaderCode, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	body, err := ioutil.ReadAll(recorder.Body)
+	body, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(body), p.Title)
 }
@@ -149,7 +148,7 @@ func TestInternalErrorWithSentry(t *testing.T) {
 	assert.Equal(http.StatusInternalServerError, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Error")
 	assert.Contains(string(bodyHTML), errID)
