@@ -4,8 +4,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/auth"
 	pb "v2.staffjoy.com/company"
@@ -26,28 +26,28 @@ func (s *companyServer) CreateTeam(ctx context.Context, req *pb.CreateTeamReques
 		}
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	c, err := s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid})
 	if err != nil {
-		return nil, grpc.Errorf(codes.NotFound, "Company with specified id not found")
+		return nil, status.Errorf(codes.NotFound, "Company with specified id not found")
 	}
 
 	// sanitize
 	if req.DayWeekStarts == "" {
 		req.DayWeekStarts = c.DefaultDayWeekStarts
 	} else if req.DayWeekStarts, err = sanitizeDayOfWeek(req.DayWeekStarts); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid DefaultDayWeekStarts")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid DefaultDayWeekStarts")
 	}
 	if req.Timezone == "" {
 		req.Timezone = c.DefaultTimezone
 	} else if err = validTimezone(req.Timezone); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid timezone")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid timezone")
 	}
 
 	if err = validColor(req.Color); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid color")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid color")
 	}
 
 	uuid, err := crypto.NewUUID()
@@ -81,7 +81,7 @@ func (s *companyServer) ListTeams(ctx context.Context, req *pb.TeamListRequest) 
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 	if _, err = s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid}); err != nil {
 		return nil, err
@@ -126,7 +126,7 @@ func (s *companyServer) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*p
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationICalService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid}); err != nil {
@@ -137,7 +137,7 @@ func (s *companyServer) GetTeam(ctx context.Context, req *pb.GetTeamRequest) (*p
 	if err != nil {
 		return nil, s.internalError(err, "unable to query database")
 	} else if obj == nil {
-		return nil, grpc.Errorf(codes.NotFound, "team not found")
+		return nil, status.Errorf(codes.NotFound, "team not found")
 	}
 	t := obj.(*pb.Team)
 	t.CompanyUuid = req.CompanyUuid
@@ -154,7 +154,7 @@ func (s *companyServer) UpdateTeam(ctx context.Context, req *pb.Team) (*pb.Team,
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	// path
@@ -164,13 +164,13 @@ func (s *companyServer) UpdateTeam(ctx context.Context, req *pb.Team) (*pb.Team,
 
 	// sanitize
 	if req.DayWeekStarts, err = sanitizeDayOfWeek(req.DayWeekStarts); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
 	}
 	if err = validTimezone(req.Timezone); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid timezone")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid timezone")
 	}
 	if err = validColor(req.Color); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid color")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid color")
 	}
 
 	t, err := s.GetTeam(ctx, &pb.GetTeamRequest{CompanyUuid: req.CompanyUuid, Uuid: req.Uuid})
@@ -212,7 +212,7 @@ func (s *companyServer) GetWorkerTeamInfo(ctx context.Context, req *pb.Worker) (
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationICalService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	teamUUID := ""
@@ -220,7 +220,7 @@ func (s *companyServer) GetWorkerTeamInfo(ctx context.Context, req *pb.Worker) (
 	err = s.db.QueryRow(q, req.UserUuid).Scan(&teamUUID)
 	if err != nil {
 		logger.Debugf("get team -- %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid user")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid user")
 	}
 
 	companyUUID := ""
@@ -228,7 +228,7 @@ func (s *companyServer) GetWorkerTeamInfo(ctx context.Context, req *pb.Worker) (
 	err = s.db.QueryRow(q, teamUUID).Scan(&companyUUID)
 	if err != nil {
 		logger.Debugf("get team -- %v", err)
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid company")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid company")
 	}
 
 	w := &pb.Worker{

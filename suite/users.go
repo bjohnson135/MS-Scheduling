@@ -3,7 +3,7 @@ package suite
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -59,7 +59,7 @@ func AccountExists(email string) (exists bool, err error) {
 		return
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	data := new(usersResp)
 	if err = json.Unmarshal(body, &data); err != nil {
 		return

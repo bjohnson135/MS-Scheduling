@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -30,7 +30,7 @@ func TestNotRobotsGoesNext(t *testing.T) {
 	assert.NoError(err)
 	mw.ServeHTTP(rec, req, next)
 	assert.True(nextCalled)
-	assert.Empty(ioutil.ReadAll(rec.Body))
+	assert.Empty(io.ReadAll(rec.Body))
 }
 
 func TestHits(t *testing.T) {
@@ -76,7 +76,7 @@ func TestHits(t *testing.T) {
 			mw.ServeHTTP(rec, req, next)
 
 			assert.False(nextCalled)
-			body, err := ioutil.ReadAll(rec.Body)
+			body, err := io.ReadAll(rec.Body)
 			assert.NoError(err)
 			assert.Equal(tt.expectedResult, string(body))
 		}

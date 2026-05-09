@@ -6,9 +6,9 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/account"
 	"v2.staffjoy.com/auth"
@@ -31,7 +31,7 @@ func (s *companyServer) CreateDirectory(ctx context.Context, req *pb.NewDirector
 		}
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	if _, err = s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.CompanyUuid}); err != nil {
@@ -60,7 +60,7 @@ func (s *companyServer) CreateDirectory(ctx context.Context, req *pb.NewDirector
 	if err != nil {
 		return nil, s.internalError(err, "failed to query database")
 	} else if exists {
-		return nil, grpc.Errorf(codes.AlreadyExists, "relationship already exists")
+		return nil, status.Errorf(codes.AlreadyExists, "relationship already exists")
 	}
 	_, err = s.db.Exec("INSERT INTO directory (company_uuid, user_uuid, internal_id) values (?, ?, ?)",
 		req.CompanyUuid, a.Uuid, req.InternalId)
@@ -102,7 +102,7 @@ func (s *companyServer) Directory(ctx context.Context, req *pb.DirectoryListRequ
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if req.Limit <= 0 {
@@ -165,13 +165,13 @@ func (s *companyServer) GetDirectoryEntry(ctx context.Context, req *pb.Directory
 	case auth.AuthorizationWhoamiService:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	e := &pb.DirectoryEntry{UserUuid: req.UserUuid, CompanyUuid: req.CompanyUuid}
 	err = s.db.QueryRow("SELECT internal_id from directory WHERE (company_uuid=? AND user_uuid=?) LIMIT 1", req.CompanyUuid, req.UserUuid).Scan(&e.InternalId)
 	if err == sql.ErrNoRows {
-		return nil, grpc.Errorf(codes.NotFound, "directory entry not found for user in this company")
+		return nil, status.Errorf(codes.NotFound, "directory entry not found for user in this company")
 	} else if err != nil {
 		return nil, s.internalError(err, "failed to query database")
 	}
@@ -203,12 +203,12 @@ func (s *companyServer) UpdateDirectoryEntry(ctx context.Context, req *pb.Direct
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	orig, err := s.GetDirectoryEntry(ctx, &pb.DirectoryEntryRequest{CompanyUuid: req.CompanyUuid, UserUuid: req.UserUuid})
 	if err != nil {
-		return nil, grpc.Errorf(codes.NotFound, "entry does not exist")
+		return nil, status.Errorf(codes.NotFound, "entry does not exist")
 	}
 
 	authMd := metadata.New(map[string]string{auth.AuthorizationMetadata: auth.AuthorizationCompanyService})
@@ -237,9 +237,9 @@ func (s *companyServer) UpdateDirectoryEntry(ctx context.Context, req *pb.Direct
 	}
 
 	if a.ConfirmedAndActive && accountUpdateRequested {
-		return nil, grpc.Errorf(codes.InvalidArgument, "this user is active, so they cannot be modified")
+		return nil, status.Errorf(codes.InvalidArgument, "this user is active, so they cannot be modified")
 	} else if a.Support && accountUpdateRequested {
-		return nil, grpc.Errorf(codes.PermissionDenied, "you cannot change this account")
+		return nil, status.Errorf(codes.PermissionDenied, "you cannot change this account")
 	}
 
 	if accountUpdateRequested {
@@ -303,7 +303,7 @@ func (s *companyServer) GetAssociations(ctx context.Context, req *pb.DirectoryLi
 		switch {
 		case err == nil:
 			a.Admin = true
-		case grpc.Code(err) == codes.NotFound:
+		case status.Code(err) == codes.NotFound:
 			a.Admin = false
 		default:
 			s.internalError(err, "failed to fetch admin")

@@ -3,7 +3,7 @@ package suite
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"time"
@@ -54,7 +54,7 @@ func GetOldData() (*OldData, error) {
 		return nil, fmt.Errorf("Unexpected suite status when querying users api - %s", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	var od OldData
 	if err = json.Unmarshal(body, &od); err != nil {
 		return nil, err

@@ -31,7 +31,7 @@ func TestHomepageRendersValidHtml(t *testing.T) {
 	assert.Equal(http.StatusOK, rec.Code)
 	assert.NotZero(rec.Body.Len())
 	/*
-		bodyHTML, err := ioutil.ReadAll(rec.Body)
+		bodyHTML, err := io.ReadAll(rec.Body)
 		assert.NoError(err)
 			if page.Title != "" {
 				assert.Contains(string(bodyHTML), page.Title)

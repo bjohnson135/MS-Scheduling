@@ -7,9 +7,9 @@ import (
 
 	"golang.org/x/net/context"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 	"v2.staffjoy.com/auth"
 	"v2.staffjoy.com/company"
 )
@@ -38,7 +38,7 @@ func (s *botServer) internalError(err error, format string, a ...interface{}) er
 	if s.errorClient != nil {
 		s.errorClient.CaptureError(err, nil)
 	}
-	return grpc.Errorf(codes.Unknown, format, a...)
+	return status.Errorf(codes.Unknown, format, a...)
 }
 
 func printShiftSms(shift *company.Shift, tz string) (string, error) {

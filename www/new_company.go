@@ -7,9 +7,9 @@ import (
 
 	"github.com/gorilla/csrf"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/account"
 	"v2.staffjoy.com/auth"
@@ -68,7 +68,7 @@ func newCompanyHandler(res http.ResponseWriter, req *http.Request) {
 
 		// Make the company
 		c, err := companyClient.CreateCompany(ctx, &company.CreateCompanyRequest{Name: name, DefaultTimezone: timezone, DefaultDayWeekStarts: defaultDayWeekStarts})
-		if codes.InvalidArgument == grpc.Code(err) {
+		if codes.InvalidArgument == status.Code(err) {
 			// retry with default timezone
 			if c, err = companyClient.CreateCompany(ctx, &company.CreateCompanyRequest{Name: name, DefaultTimezone: defaultTimezone, DefaultDayWeekStarts: defaultDayWeekStarts}); err != nil {
 				panic(err)

@@ -4,8 +4,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/auth"
 	pb "v2.staffjoy.com/company"
@@ -25,7 +25,7 @@ func (s *companyServer) CreateJob(ctx context.Context, req *pb.CreateJobRequest)
 		}
 	case auth.AuthorizationAuthenticatedUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -33,7 +33,7 @@ func (s *companyServer) CreateJob(ctx context.Context, req *pb.CreateJobRequest)
 	}
 
 	if err = validColor(req.Color); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid color")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid color")
 	}
 
 	uuid, err := crypto.NewUUID()
@@ -66,7 +66,7 @@ func (s *companyServer) ListJobs(ctx context.Context, req *pb.JobListRequest) (*
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
 		return nil, err
@@ -106,7 +106,7 @@ func (s *companyServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationBotService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
@@ -117,7 +117,7 @@ func (s *companyServer) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.
 	if err != nil {
 		return nil, s.internalError(err, "unable to query database")
 	} else if obj == nil {
-		return nil, grpc.Errorf(codes.NotFound, "job not found")
+		return nil, status.Errorf(codes.NotFound, "job not found")
 	}
 	j := obj.(*pb.Job)
 	j.CompanyUuid = req.CompanyUuid
@@ -134,15 +134,15 @@ func (s *companyServer) UpdateJob(ctx context.Context, req *pb.Job) (*pb.Job, er
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if _, err = s.GetTeam(ctx, &pb.GetTeamRequest{Uuid: req.TeamUuid, CompanyUuid: req.CompanyUuid}); err != nil {
-		return nil, grpc.Errorf(codes.NotFound, "Company and team path not found")
+		return nil, status.Errorf(codes.NotFound, "Company and team path not found")
 	}
 
 	if err = validColor(req.Color); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid color")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid color")
 	}
 
 	orig, err := s.GetJob(ctx, &pb.GetJobRequest{CompanyUuid: req.CompanyUuid, TeamUuid: req.TeamUuid, Uuid: req.Uuid})

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -23,7 +23,7 @@ func TestStaticPagesRenderValidHtml(t *testing.T) {
 		assert.Equal("text/html; charset=UTF-8", recorder.Header().Get("Content-Type"))
 		assert.Equal(http.StatusOK, recorder.Code)
 		assert.NotZero(recorder.Body.Len())
-		bodyHTML, err := ioutil.ReadAll(recorder.Body)
+		bodyHTML, err := io.ReadAll(recorder.Body)
 		assert.NoError(err)
 		if page.Title != "" {
 			assert.Contains(string(bodyHTML), page.Title)
@@ -55,7 +55,7 @@ func TestUnknownPageReturnsNotFound(t *testing.T) {
 	assert.Equal(http.StatusNotFound, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Oops")
 
@@ -79,7 +79,7 @@ func TestHomepageExists(t *testing.T) {
 	assert.Equal(http.StatusOK, recorder.Code)
 	assert.NotZero(recorder.Body.Len())
 
-	bodyHTML, err := ioutil.ReadAll(recorder.Body)
+	bodyHTML, err := io.ReadAll(recorder.Body)
 	assert.NoError(err)
 	assert.Contains(string(bodyHTML), "Staffjoy")
 

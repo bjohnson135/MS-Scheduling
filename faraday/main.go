@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
@@ -128,7 +127,7 @@ func proxyHandler(res http.ResponseWriter, req *http.Request) {
 	// No security on backend right now :-(
 	destination := "http://" + service.BackendDomain + req.URL.RequestURI()
 	logger.Debugf("Proxying to %s", destination)
-	b, err := ioutil.ReadAll(req.Body)
+	b, err := io.ReadAll(req.Body)
 	defer req.Body.Close()
 	if err != nil {
 		panic(fmt.Sprintf("Could not read request body - %s", err))

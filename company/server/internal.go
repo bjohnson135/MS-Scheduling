@@ -4,8 +4,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/auth"
 	pb "v2.staffjoy.com/company"
@@ -109,7 +109,7 @@ func (s *companyServer) GrowthGraph(ctx context.Context, req *pb.GrowthGraphRequ
 	switch authz {
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	onShifts, err := s.PeopleOnShifts()

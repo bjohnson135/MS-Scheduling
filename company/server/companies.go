@@ -4,8 +4,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"v2.staffjoy.com/auth"
 	pb "v2.staffjoy.com/company"
@@ -22,19 +22,19 @@ func (s *companyServer) CreateCompany(ctx context.Context, req *pb.CreateCompany
 	case auth.AuthorizationSupportUser:
 	case auth.AuthorizationWWWService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "you do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "you do not have access to this service")
 	}
 
 	// sanitization
 	req.DefaultDayWeekStarts, err = sanitizeDayOfWeek(req.DefaultDayWeekStarts)
 	if err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
 	}
 	if err = validTimezone(req.DefaultTimezone); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "invalid timezone")
+		return nil, status.Errorf(codes.InvalidArgument, "invalid timezone")
 	}
 	if len(req.Name) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "name is required")
+		return nil, status.Errorf(codes.InvalidArgument, "name is required")
 	}
 
 	uuid, err := crypto.NewUUID()
@@ -62,7 +62,7 @@ func (s *companyServer) ListCompanies(ctx context.Context, req *pb.CompanyListRe
 	switch authz {
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	if req.Limit <= 0 {
@@ -109,14 +109,14 @@ func (s *companyServer) GetCompany(ctx context.Context, req *pb.GetCompanyReques
 	case auth.AuthorizationWWWService:
 	case auth.AuthorizationICalService:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	obj, err := s.dbMap.Get(pb.Company{}, req.Uuid)
 	if err != nil {
 		return nil, s.internalError(err, "unable to query database")
 	} else if obj == nil {
-		return nil, grpc.Errorf(codes.NotFound, "company not found")
+		return nil, status.Errorf(codes.NotFound, "company not found")
 	}
 	return obj.(*pb.Company), nil
 }
@@ -130,15 +130,15 @@ func (s *companyServer) UpdateCompany(ctx context.Context, req *pb.Company) (*pb
 		}
 	case auth.AuthorizationSupportUser:
 	default:
-		return nil, grpc.Errorf(codes.PermissionDenied, "You do not have access to this service")
+		return nil, status.Errorf(codes.PermissionDenied, "You do not have access to this service")
 	}
 
 	// sanitization
 	if req.DefaultDayWeekStarts, err = sanitizeDayOfWeek(req.DefaultDayWeekStarts); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid DefaultDayWeekStarts")
 	}
 	if err = validTimezone(req.DefaultTimezone); err != nil {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Invalid timezone")
+		return nil, status.Errorf(codes.InvalidArgument, "Invalid timezone")
 	}
 	c, err := s.GetCompany(ctx, &pb.GetCompanyRequest{Uuid: req.Uuid})
 	if err != nil {

@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
@@ -84,7 +84,7 @@ func (s *botServer) AlertNewShift(ctx context.Context, req *bot.AlertNewShiftReq
 func (s *botServer) AlertNewShifts(ctx context.Context, req *bot.AlertNewShiftsRequest) (*empty.Empty, error) {
 	shifts := req.NewShifts
 	if len(shifts) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "empty shifts array in request")
+		return nil, status.Errorf(codes.InvalidArgument, "empty shifts array in request")
 	}
 
 	companyUUID := shifts[0].CompanyUuid
@@ -225,7 +225,7 @@ func (s *botServer) AlertRemovedShift(ctx context.Context, req *bot.AlertRemoved
 func (s *botServer) AlertRemovedShifts(ctx context.Context, req *bot.AlertRemovedShiftsRequest) (*empty.Empty, error) {
 	shifts := req.OldShifts
 	if len(shifts) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "empty shifts array in request")
+		return nil, status.Errorf(codes.InvalidArgument, "empty shifts array in request")
 	}
 
 	companyUUID := shifts[0].CompanyUuid

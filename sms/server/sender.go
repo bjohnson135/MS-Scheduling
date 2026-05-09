@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -69,7 +69,7 @@ func (s *smsServer) send(msg *pb.SmsRequest) {
 	}
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
 		var data map[string]interface{}
-		bodyBytes, _ := ioutil.ReadAll(resp.Body)
+		bodyBytes, _ := io.ReadAll(resp.Body)
 		err := json.Unmarshal(bodyBytes, &data)
 		if err == nil {
 			s.logger.WithFields(logrus.Fields{"to": msg.To, "from": from, "body": msg.Body}).Infof("SMS sent - %v", data["sid"])

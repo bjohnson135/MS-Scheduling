@@ -20,6 +20,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	pb "v2.staffjoy.com/email"
 	"v2.staffjoy.com/environments"
@@ -90,13 +91,13 @@ func main() {
 
 func (s *emailServer) Send(ctx context.Context, req *pb.EmailRequest) (*empty.Empty, error) {
 	if len(req.To) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please provide an email")
+		return nil, status.Errorf(codes.InvalidArgument, "Please provide an email")
 	}
 	if len(req.Subject) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please provide a subject")
+		return nil, status.Errorf(codes.InvalidArgument, "Please provide a subject")
 	}
 	if len(req.HtmlBody) == 0 {
-		return nil, grpc.Errorf(codes.InvalidArgument, "Please provide a valid body")
+		return nil, status.Errorf(codes.InvalidArgument, "Please provide a valid body")
 	}
 	// Send asynchronously
 	go s.processSend(req)

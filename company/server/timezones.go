@@ -1,19 +1,20 @@
 package main
 
 import (
+	"os"
+
 	_ "github.com/go-sql-driver/mysql"
 
 	"golang.org/x/net/context"
 
 	pb "v2.staffjoy.com/company"
 
-	"io/ioutil"
 	"strings"
 )
 
 // zoneList returns a list of available timezones on this system
 func zoneList() ([]string, error) {
-	b, err := ioutil.ReadFile("/usr/share/zoneinfo/zone.tab")
+	b, err := os.ReadFile("/usr/share/zoneinfo/zone.tab")
 	if err != nil {
 		return nil, err
 	}
