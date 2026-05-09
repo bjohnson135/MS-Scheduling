@@ -157,8 +157,19 @@ func proxyHandler(res http.ResponseWriter, req *http.Request) {
 	switch internalReq.Header.Get(auth.AuthorizationHeader) {
 	case auth.AuthorizationAnonymousWeb:
 		if service.Security != services.Public {
-			// Send to /login on the same host (path-based routing — see ADR-0004).
+			// Send to /login on the same host (path-based routing — see
+			// ADR-0004). The ServiceMiddleware may have stripped the
+			// matched prefix; we have to put it back so the user lands
+			// where they tried to go after they log in.
+			prefix, _ := req.Context().Value(requestedPathPrefix).(string)
 			returnTo := req.URL.EscapedPath()
+			if service.StripPrefix && prefix != "" && prefix != "/" {
+				returnTo = prefix + returnTo
+				if returnTo == prefix+"/" && !strings.HasSuffix(req.URL.Path, "/") {
+					// Original was "/app" not "/app/"; honor that.
+					returnTo = prefix
+				}
+			}
 			if req.URL.RawQuery != "" {
 				returnTo += "?" + req.URL.RawQuery
 			}
